@@ -1,13 +1,13 @@
 -- Create submissions table for storing user submitted data
 CREATE TABLE IF NOT EXISTS public.submissions (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     gender TEXT NOT NULL CHECK (gender IN ('Male', 'Female')),
-    bodyweight REAL NOT NULL CHECK (bodyweight > 0 AND bodyweight < 300),
-    added_weight REAL NOT NULL CHECK (added_weight >= 0 AND added_weight < 200),
-    reps INTEGER NOT NULL CHECK (reps > 0 AND reps <= 50),
-    form_quality TEXT NOT NULL CHECK (form_quality IN ('Competition', 'Good', 'Minor_Cheat', 'Major_Cheat')),
-    penalty_weight REAL DEFAULT 0 CHECK (penalty_weight >= 0 AND penalty_weight <= 20),
+    bodyweight DOUBLE PRECISION NOT NULL,
+    added_weight DOUBLE PRECISION NOT NULL,
+    reps INTEGER NOT NULL,
+    form_quality TEXT NOT NULL CHECK (form_quality IN ('Competition', 'Minor_Cheat', 'Major_Cheat')),
+    penalty_weight DOUBLE PRECISION NOT NULL DEFAULT 0,
     user_name TEXT, -- 用户名字或社媒账号（选填）
     video_url TEXT, -- 视频链接（选填）
     pullup_type TEXT NOT NULL CHECK (pullup_type IN ('Overhand', 'Underhand')), -- 引体类型：正手或反手

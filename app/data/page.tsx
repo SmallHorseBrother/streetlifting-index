@@ -85,8 +85,6 @@ export default function DataPage() {
     switch (quality) {
       case "Competition":
         return "bg-green-100 text-green-800"
-      case "Good":
-        return "bg-blue-100 text-blue-800"
       case "Minor_Cheat":
         return "bg-yellow-100 text-yellow-800"
       case "Major_Cheat":
@@ -100,8 +98,6 @@ export default function DataPage() {
     switch (quality) {
       case "Competition":
         return "比赛级"
-      case "Good":
-        return "良好"
       case "Minor_Cheat":
         return "轻微借力"
       case "Major_Cheat":
@@ -114,7 +110,27 @@ export default function DataPage() {
   const calculate1RM = (bodyweight: number, addedWeight: number, reps: number, penaltyWeight: number) => {
     const adjustedWeight = addedWeight - penaltyWeight
     const totalWeight = bodyweight + adjustedWeight
-    return totalWeight * (1 + reps / 30)
+
+    // If reps is 1, the total weight is already the 1RM
+    if (reps === 1) {
+      return adjustedWeight // 直接返回调整后的负重
+    }
+
+    // The Brzycki formula is undefined for reps >= 37
+    if (reps >= 37) {
+      return 0 // 或者返回一个错误信息
+    }
+
+    // Calculate 1RM using three different formulas
+    const epley1RM = totalWeight * (1 + 0.0333 * reps)
+    const brzycki1RM = totalWeight * (36 / (37 - reps))
+    const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
+
+    // Average the results for a more accurate 1RM
+    const totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
+
+    // Return the 1RM for added weight (subtract bodyweight)
+    return totalEstimated1RM - bodyweight
   }
 
   if (loading) {
@@ -213,12 +229,11 @@ export default function DataPage() {
                     onValueChange={(value) => setFilters({ ...filters, formQuality: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="动作质量" />
+                      <SelectValue placeholder="选择质量" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部质量</SelectItem>
                       <SelectItem value="Competition">比赛级</SelectItem>
-                      <SelectItem value="Good">良好</SelectItem>
                       <SelectItem value="Minor_Cheat">轻微借力</SelectItem>
                       <SelectItem value="Major_Cheat">严重借力</SelectItem>
                     </SelectContent>

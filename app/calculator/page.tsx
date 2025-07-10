@@ -201,6 +201,9 @@ export default function CalculatorPage() {
                       onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
                       required
                     />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      建议输入5次以内的次数，结果更准确。
+                    </p>
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isCalculating}>

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Database, Calculator, BarChart3, Users, Shield } from "lucide-react"
 import Link from "next/link"
 import { DonationSection } from "@/components/donation-section"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function MethodologyPage() {
   return (
@@ -108,7 +109,7 @@ export default function MethodologyPage() {
                   </div>
 
                   <div>
-                    <h4 className="font-semibold mb-3">匿名化处��</h4>
+                    <h4 className="font-semibold mb-3">匿名化处理</h4>
                     <p className="text-gray-700">
                       所有提交的数据都经过严格的匿名化处理，我们不收集任何个人身份信息。
                       数据仅用于统计分析和公式优化，确保用户隐私安全。
@@ -138,20 +139,14 @@ export default function MethodologyPage() {
                         <p className="text-sm font-medium">惩罚：0 kg</p>
                       </div>
 
-                      <div className="border-l-4 border-blue-500 pl-4">
-                        <h5 className="font-semibold text-blue-700">良好标准</h5>
-                        <p className="text-sm text-gray-600">动作干净，但未达到比赛严苛程度</p>
-                        <p className="text-sm font-medium">惩罚：0 kg</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
                       <div className="border-l-4 border-yellow-500 pl-4">
                         <h5 className="font-semibold text-yellow-700">轻微借力</h5>
                         <p className="text-sm text-gray-600">少量借力完成动作</p>
                         <p className="text-sm font-medium">惩罚：2-5 kg（用户自评）</p>
                       </div>
+                    </div>
 
+                    <div className="space-y-3">
                       <div className="border-l-4 border-red-500 pl-4">
                         <h5 className="font-semibold text-red-700">严重借力</h5>
                         <p className="text-sm text-gray-600">明显借力完成动作</p>
@@ -173,142 +168,126 @@ export default function MethodologyPage() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Calculator className="h-6 w-6 mr-2 text-purple-600" />
-                  1RM估算方法
+                  1RM估算方法 (V0.1)
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <p className="text-gray-700">我们使用经典的Epley公式来估算用户的1RM（一次最大重复）：</p>
+                  <p className="text-gray-700">
+                    为了更准确地估算用户的1RM（一次最大重复），我们综合了三种广受认可的公式，并取其平均值。
+                    这种方法可以有效减少单一公式在特定次数区间的偏差，提供更可靠的估算。
+                  </p>
+                  <p className="text-gray-700 font-medium">
+                    特别地，当用户输入的完成次数为1次时，我们直接将 (自身体重 + 调整后附加负重)
+                    作为其1RM，因为这本身就是1RM的定义。
+                  </p>
 
-                  <div className="bg-purple-50 p-6 rounded-lg text-center">
-                    <h4 className="font-semibold text-purple-800 mb-4">Epley 1RM估算公式</h4>
-                    <div className="font-mono text-lg text-purple-700 mb-2">1RM = 负重 × (1 + 次数 ÷ 30)</div>
-                    <p className="text-sm text-purple-600">其中负重 = 体重 + 调整后附加负重</p>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4 mt-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h5 className="font-semibold mb-2">公式优势</h5>
-                      <ul className="text-sm text-gray-700 space-y-1">
-                        <li>• 广泛验证的科学方法</li>
-                        <li>• 适用于中等次数范围</li>
-                        <li>• 计算简单，易于理解</li>
-                      </ul>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h5 className="font-semibold mb-2">应用范围</h5>
-                      <ul className="text-sm text-gray-700 space-y-1">
-                        <li>• 最适用于1-10次范围</li>
-                        <li>• 考虑了动作质量因素</li>
-                        <li>• 结合体重进行标准化</li>
-                      </ul>
-                    </div>
+                  <div className="bg-purple-50 p-6 rounded-lg">
+                    <h4 className="font-semibold text-purple-800 mb-4">综合1RM估算公式</h4>
+                    <ul className="font-mono text-sm md:text-base text-purple-700 space-y-2 text-left">
+                      <li>
+                        <strong>Epley:</strong> Total_1RM = Total_Weight × (1 + 0.0333 × Reps)
+                      </li>
+                      <li>
+                        <strong>Brzycki:</strong> Total_1RM = Total_Weight × (36 / (37 - Reps))
+                      </li>
+                      <li>
+                        <strong>Lombardi:</strong> Total_1RM = Total_Weight × (Reps ^ 0.1)
+                      </li>
+                      <li className="pt-2">
+                        <strong>最终估算:</strong> (Epley_1RM + Brzycki_1RM + Lombardi_1RM) / 3
+                      </li>
+                    </ul>
+                    <p className="text-xs text-purple-600 mt-3 text-left">
+                      * Total_Weight = 自身体重 + 调整后附加负重
+                    </p>
+                    <p className="text-xs text-purple-600 mt-1 text-left">
+                      * 页面显示的1RM为 <strong>负重1RM</strong> (Total_1RM - 自身体重)
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Performance Envelope */}
+            {/* Performance Envelope & Coefficient Formula */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <BarChart3 className="h-6 w-6 mr-2 text-indigo-600" />
-                  性能包络线提取
+                  力量系数公式 (V0.1 - 初始版)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <p className="text-gray-700">性能包络线代表了不同体重下的理论最大拉力，是计算力量系数的基础：</p>
-
-                  <div className="space-y-4">
-                    <div className="bg-indigo-50 p-4 rounded-lg">
-                      <h5 className="font-semibold text-indigo-800 mb-2">提取步骤</h5>
-                      <ol className="text-sm text-indigo-700 space-y-2">
-                        <li>
-                          <strong>1. 数据分箱：</strong>按体重区间（如5kg为一组）对数据进行分组
-                        </li>
-                        <li>
-                          <strong>2. 百分位提取：</strong>在每个体重区间内提取99百分位的1RM数据
-                        </li>
-                        <li>
-                          <strong>3. LOESS平滑：</strong>使用局部回归对数据点进行平滑处理
-                        </li>
-                        <li>
-                          <strong>4. 包络线生成：</strong>得到连续的T_max(W)函数
-                        </li>
-                      </ol>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h5 className="font-semibold mb-2">统计学原理</h5>
-                        <p className="text-sm text-gray-700">
-                          99百分位确保我们捕获的是真正的高水平表现，而不是异常值。
-                          LOESS平滑则保证了曲线的连续性和合理性。
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h5 className="font-semibold mb-2">实际意义</h5>
-                        <p className="text-sm text-gray-700">
-                          性能包络线反映了不同体重下的理论最大潜力， 为建立公平的力量比较标准提供了科学依据。
-                        </p>
+                <div className="space-y-6">
+                  <div className="bg-gray-50 p-4 rounded-lg border text-center">
+                    <p className="text-gray-800 leading-relaxed font-semibold">
+                      本站采用的引体向上力量系数公式为世界首创，由北京大学博士生 <span className="text-indigo-600">枭马葛</span> 计算与提供。
+                    </p>
+                    <div className="mt-3">
+                      <p className="text-sm text-gray-600">关注他的社交媒体，了解更多健身科学：</p>
+                      <div className="flex flex-col sm:flex-row justify-center gap-2 mt-1">
+                        <a
+                          href="https://space.bilibili.com/495933903"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline text-sm"
+                        >
+                          B站: 枭马葛的主页
+                        </a>
+                        <span className="hidden sm:inline text-gray-400">|</span>
+                        <a
+                          href="https://www.douyin.com/user/MS4wLjABAAAAy7udlkayIqU8bv2_78wy-WnexjBe0yqo1VoKwLlwCmee2p52Wzpdlf2zcoy8pJNm"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-red-500 hover:underline text-sm"
+                        >
+                          抖音: 枭马葛的主页
+                        </a>
                       </div>
                     </div>
+                  </div>
+                  <p className="text-gray-700">
+                    力量系数 C(W) 是一个与体重相关的函数，旨在消除体重差异，使不同体重的训练者可以公平比较。
+                  </p>
+                  <Alert className="border-orange-200 bg-orange-50">
+                    <AlertDescription className="text-orange-800">
+                      <strong>V0.1版本说明：</strong>
+                      当前的系数公式是基于少量世界顶尖运动员的数据生成的初始版本。它的意义在于为项目提供一个可运行的“冷启动”模型。随着社区数据的不断积累，我们将通过统计学方法（如下文所述的性能包络线提取）自动生成和迭代更精确的公式。
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="bg-indigo-50 p-4 rounded-lg">
+                    <h5 className="font-semibold text-indigo-800 mb-2">V0.1 系数公式 (4阶多项式)</h5>
+                    <p className="font-mono text-sm text-indigo-700">
+                      C(W) = a·W⁴ + b·W³ + c·W² + d·W + e
+                    </p>
+                    <p className="text-xs text-indigo-600 mt-2">
+                      * W代表体重(kg)，a,b,c,d,e为拟合系数，男女有别。
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Coefficient Formula */}
+            {/* Final Score Calculation */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Calculator className="h-6 w-6 mr-2 text-red-600" />
-                  系数公式推导
+                  <TrendingUp className="h-6 w-6 mr-2 text-teal-600" />
+                  最终力量分计算
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <p className="text-gray-700">力量系数的核心思想是标准化不同体重下的力量表现：</p>
-
-                  <div className="bg-red-50 p-6 rounded-lg">
-                    <h4 className="font-semibold text-red-800 mb-4 text-center">力量系数公式</h4>
-                    <div className="font-mono text-lg text-red-700 text-center mb-4">C(W) = 500 ÷ T_max(W)</div>
-                    <div className="text-center">
-                      <p className="text-sm text-red-600 mb-2">最终力量分 = 用户1RM × C(体重)</p>
-                      <p className="text-xs text-red-500">其中500是标准化常数，T_max(W)是体重W下的性能包络线值</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h5 className="font-semibold mb-2">多项式拟合</h5>
-                      <p className="text-gray-700 mb-3">为了便于计算和存储，我们将C(W)函数拟合为5阶多项式：</p>
-                      <div className="bg-gray-50 p-4 rounded-lg font-mono text-sm">
-                        C(W) = a×W⁵ + b×W⁴ + c×W³ + d×W² + e×W + f
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h5 className="font-semibold mb-2">设计理念</h5>
-                        <ul className="text-sm text-gray-700 space-y-1">
-                          <li>• 体重越轻，系数越大</li>
-                          <li>• 体重越重，系数越小</li>
-                          <li>• 反映生理学规律</li>
-                          <li>• 实现公平比较</li>
-                        </ul>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h5 className="font-semibold mb-2">更新机制</h5>
-                        <ul className="text-sm text-gray-700 space-y-1">
-                          <li>• 定期自动更新</li>
-                          <li>• 基于最新数据</li>
-                          <li>• 分性别独立计算</li>
-                          <li>• 版本控制追踪</li>
-                        </ul>
-                      </div>
-                    </div>
+                  <p className="text-gray-700">
+                    最终的力量分结合了您的最大力量（总重量1RM）和体重标准化系数C(W)，得出一个能够跨体重进行比较的综合分数。
+                  </p>
+                  <div className="bg-teal-50 p-6 rounded-lg text-center">
+                    <h4 className="font-semibold text-teal-800 mb-4">力量分计算公式</h4>
+                    <div className="font-mono text-lg text-teal-700 mb-2">力量分 = 总重量1RM × C(W)</div>
+                    <p className="text-sm text-teal-600">
+                      其中，总重量1RM = (自身体重 + 调整后附加负重) 的估算1RM
+                    </p>
                   </div>
                 </div>
               </CardContent>

@@ -55,15 +55,28 @@ export function RecentSubmissions() {
   const calculate1RM = (bodyweight: number, addedWeight: number, reps: number, penaltyWeight: number) => {
     const adjustedWeight = addedWeight - penaltyWeight
     const totalWeight = bodyweight + adjustedWeight
-    return totalWeight * (1 + reps / 30)
+
+    if (reps === 1) {
+      return adjustedWeight
+    }
+
+    if (reps >= 37) {
+      return 0
+    }
+
+    const epley1RM = totalWeight * (1 + 0.0333 * reps)
+    const brzycki1RM = totalWeight * (36 / (37 - reps))
+    const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
+
+    const totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
+
+    return totalEstimated1RM - bodyweight
   }
 
   const getQualityColor = (quality: string) => {
     switch (quality) {
       case "Competition":
         return "bg-green-100 text-green-700"
-      case "Good":
-        return "bg-blue-100 text-blue-700"
       case "Minor_Cheat":
         return "bg-yellow-100 text-yellow-700"
       case "Major_Cheat":
@@ -77,8 +90,6 @@ export function RecentSubmissions() {
     switch (quality) {
       case "Competition":
         return "比赛级"
-      case "Good":
-        return "良好"
       case "Minor_Cheat":
         return "轻微借力"
       case "Major_Cheat":

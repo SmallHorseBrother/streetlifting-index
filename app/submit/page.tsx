@@ -209,6 +209,9 @@ export default function SubmissionPage() {
                       onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
                       required
                     />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      建议输入5次以内的次数，这样提交的数据更有效。
+                    </p>
                   </div>
                 </div>
 
@@ -223,7 +226,6 @@ export default function SubmissionPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Competition">比赛级标准 - 动作完美，符合比赛要求</SelectItem>
-                      <SelectItem value="Good">良好标准 - 动作干净，但未达到比赛严苛程度</SelectItem>
                       <SelectItem value="Minor_Cheat">轻微借力 - 少量借力完成动作</SelectItem>
                       <SelectItem value="Major_Cheat">严重借力 - 明显借力完成动作</SelectItem>
                     </SelectContent>

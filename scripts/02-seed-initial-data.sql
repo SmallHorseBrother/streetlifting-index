@@ -1,27 +1,27 @@
--- Insert initial formula coefficients (placeholder values)
--- These will be updated by the automated system once enough data is collected
+-- Insert initial formula coefficients (V0.1)
+-- These coefficients are based on elite performance data
 
 INSERT INTO public.formulas (gender, coeff_a, coeff_b, coeff_c, coeff_d, coeff_e, coeff_f, total_submissions_used, last_updated)
 VALUES 
     ('Male', 
-     -2.5e-8,    -- coeff_a (W^5 term)
-     8.2e-6,     -- coeff_b (W^4 term)
-     -1.1e-3,    -- coeff_c (W^3 term)
-     7.8e-2,     -- coeff_d (W^2 term)
-     -2.8,       -- coeff_e (W term)
-     45.5,       -- coeff_f (constant term)
-     0,          -- total_submissions_used
-     NOW()       -- last_updated
+     0,              -- coeff_a (W^5 term) - not used in V0.1
+     1.559673e-07,   -- coeff_b (W^4 term)
+     -5.634172e-05,  -- coeff_c (W^3 term)
+     7.929852e-03,   -- coeff_d (W^2 term)
+     -0.532135,      -- coeff_e (W term)
+     16.838986,      -- coeff_f (constant term)
+     0,              -- total_submissions_used
+     NOW()           -- last_updated
     ),
     ('Female',
-     -1.8e-8,    -- coeff_a (W^5 term)
-     6.1e-6,     -- coeff_b (W^4 term)
-     -8.3e-4,    -- coeff_c (W^3 term)
-     5.9e-2,     -- coeff_d (W^2 term)
-     -2.1,       -- coeff_e (W term)
-     38.2,       -- coeff_f (constant term)
-     0,          -- total_submissions_used
-     NOW()       -- last_updated
+     0,              -- coeff_a (W^5 term) - not used in V0.1
+     3.995298e-07,   -- coeff_b (W^4 term)
+     -1.252007e-04,  -- coeff_c (W^3 term)
+     1.544642e-02,   -- coeff_d (W^2 term)
+     -0.904901,      -- coeff_e (W term)
+     25.002010,      -- coeff_f (constant term)
+     0,              -- total_submissions_used
+     NOW()           -- last_updated
     )
 ON CONFLICT (gender) DO UPDATE SET
     coeff_a = EXCLUDED.coeff_a,
