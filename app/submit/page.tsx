@@ -14,6 +14,7 @@ import { AlertTriangle, CheckCircle, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { DonationSection } from "@/components/donation-section"
+import { MobileNav } from "@/components/ui/mobile-nav"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -94,7 +95,8 @@ export default function SubmissionPage() {
                 <span className="ml-2 text-xl font-bold text-gray-900">引体向上力量指数</span>
               </Link>
             </div>
-            <div className="flex items-center space-x-8">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-8">
               <Link href="/" className="text-gray-700 hover:text-blue-600">
                 首页
               </Link>
@@ -110,6 +112,10 @@ export default function SubmissionPage() {
               <Link href="/methodology" className="text-gray-700 hover:text-blue-600">
                 方法论
               </Link>
+            </div>
+            {/* Mobile Navigation */}
+            <div className="flex items-center md:hidden">
+              <MobileNav />
             </div>
           </div>
         </div>
