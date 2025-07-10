@@ -35,7 +35,7 @@ export default function CalculatorPage() {
     addedWeight: "",
     reps: "",
   })
-  const [result, setResult] = useState<{ estimated_1rm: number; final_score: number } | null>(null)
+  const [result, setResult] = useState<{ estimated_1rm: number; final_score: number; coefficient: number } | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
   const [error, setError] = useState("")
   const [formulas, setFormulas] = useState<{ Male?: FormulaCoefficients; Female?: FormulaCoefficients }>({})
@@ -67,27 +67,70 @@ export default function CalculatorPage() {
     setResult(null)
 
     try {
-      const response = await fetch("/api/calculate-score", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          gender: formData.gender,
-          bodyweight: Number.parseFloat(formData.bodyweight),
-          added_weight: Number.parseFloat(formData.addedWeight),
-          reps: Number.parseInt(formData.reps),
-        }),
-      })
+      const gender = formData.gender
+      const bodyweight = Number.parseFloat(formData.bodyweight)
+      const added_weight = Number.parseFloat(formData.addedWeight)
+      const reps = Number.parseInt(formData.reps)
 
-      if (!response.ok) {
-        throw new Error("计算失败")
+      // Validate input
+      if (!gender || !bodyweight || added_weight === undefined || !reps) {
+        throw new Error("Missing required parameters")
       }
 
-      const data = await response.json()
-      setResult(data)
-    } catch (err) {
-      setError("计算失败，请检查输入数据或稍后重试")
+      // Get formula coefficients for the specified gender
+      const { data: formula, error: formulaError } = await supabase
+        .from("formulas")
+        .select("*")
+        .eq("gender", gender)
+        .single()
+
+      if (formulaError || !formula) {
+        throw new Error("Formula not found for specified gender")
+      }
+
+      const totalWeight = bodyweight + added_weight
+
+      // If reps is 1, the total weight is already the 1RM
+      let totalEstimated1RM = totalWeight;
+      
+      // Only calculate using formulas if reps > 1
+      if (reps > 1) {
+        // The Brzycki formula is undefined for reps >= 37.
+        if (reps >= 37) {
+          throw new Error("完成次数必须小于37次")
+        }
+
+        // Calculate 1RM using three different formulas for total weight
+        const epley1RM = totalWeight * (1 + 0.0333 * reps)
+        const brzycki1RM = totalWeight * (36 / (37 - reps))
+        const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
+
+        // Average the results for a more accurate total 1RM
+        totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
+      }
+
+      // The estimated 1RM for added weight is the total 1RM minus bodyweight
+      const estimated1RM_added_weight = totalEstimated1RM - bodyweight
+
+      // Calculate strength coefficient using polynomial (V0.1 formula)
+      const W = bodyweight
+      const coefficient =
+        formula.coeff_b * Math.pow(W, 4) +
+        formula.coeff_c * Math.pow(W, 3) +
+        formula.coeff_d * Math.pow(W, 2) +
+        formula.coeff_e * W +
+        formula.coeff_f
+
+      // Calculate final strength score using total estimated 1RM
+      const finalScore = totalEstimated1RM * coefficient
+
+      setResult({
+        estimated_1rm: estimated1RM_added_weight,
+        final_score: finalScore,
+        coefficient: coefficient,
+      })
+    } catch (err: any) {
+      setError(err.message || "计算失败，请检查输入数据或稍后重试")
       console.error("Calculation error:", err)
     } finally {
       setIsCalculating(false)
