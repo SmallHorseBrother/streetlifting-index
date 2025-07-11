@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Users, Calculator, BookOpen, ArrowRight } from "lucide-react"
@@ -9,35 +12,43 @@ import { MobileNav } from "@/components/ui/mobile-nav"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-async function getStats() {
-  try {
-    const { count: totalCount, error: submissionsError } = await supabase
-      .from("submissions")
-      .select("*", { count: "exact", head: true })
+export default function HomePage() {
+  const [stats, setStats] = useState({
+    totalCount: 0,
+    lastUpdated: null as string | null,
+    loading: true
+  })
 
-    const { data: formulas, error: formulasError } = await supabase
-      .from("formulas")
-      .select("last_updated")
-      .order("last_updated", { ascending: false })
-      .limit(1)
+  useEffect(() => {
+    async function getStats() {
+      try {
+        const { count: totalCount, error: submissionsError } = await supabase
+          .from("submissions")
+          .select("*", { count: "exact", head: true })
 
-    if (submissionsError || formulasError) {
-      return { totalCount: 0, lastUpdated: null }
+        const { data: formulas, error: formulasError } = await supabase
+          .from("formulas")
+          .select("last_updated")
+          .order("last_updated", { ascending: false })
+          .limit(1)
+
+        if (submissionsError || formulasError) {
+          setStats({ totalCount: 0, lastUpdated: null, loading: false })
+          return
+        }
+
+        setStats({
+          totalCount: totalCount || 0,
+          lastUpdated: formulas?.[0]?.last_updated || null,
+          loading: false
+        })
+      } catch (error) {
+        setStats({ totalCount: 0, lastUpdated: null, loading: false })
+      }
     }
 
-    return {
-      totalCount: totalCount || 0,
-      lastUpdated: formulas?.[0]?.last_updated || null,
-    }
-  } catch (error) {
-    return { totalCount: 0, lastUpdated: null }
-  }
-}
-
-export const revalidate = 0
-
-export default async function HomePage() {
-  const { totalCount, lastUpdated } = await getStats()
+    getStats()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -66,9 +77,9 @@ export default async function HomePage() {
       {/* Hero Section with Prominent CTAs */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">世界首创的引体向上力量系数</h1>
-          <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto">
-            由北京大学博士生<span className="text-indigo-600 font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
+          <h1 className="text-5xl font-bold mb-6">世界首创的引体向上力量系数</h1>
+          <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">
+            由<span className="font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
           </p>
           
           {/* Primary CTAs */}
@@ -141,7 +152,11 @@ export default async function HomePage() {
               <CardHeader className="text-center pb-4">
                 <Users className="h-12 w-12 text-blue-600 mx-auto mb-2" />
                 <CardTitle className="text-xl text-blue-700">数据提交</CardTitle>
-                <div className="text-3xl font-bold text-blue-600">{totalCount.toLocaleString()}</div>
+                {stats.loading ? (
+                  <div className="text-2xl font-bold text-blue-600">加载中...</div>
+                ) : (
+                  <div className="text-3xl font-bold text-blue-600">{stats.totalCount.toLocaleString()}</div>
+                )}
                 <p className="text-sm text-gray-500">条数据已收录</p>
               </CardHeader>
               <CardContent className="text-center">
@@ -159,9 +174,13 @@ export default async function HomePage() {
               <CardHeader className="text-center pb-4">
                 <TrendingUp className="h-12 w-12 text-purple-600 mx-auto mb-2" />
                 <CardTitle className="text-xl text-purple-700">公式状态</CardTitle>
-                <div className="text-lg font-semibold text-purple-600">
-                  {lastUpdated ? new Date(lastUpdated).toLocaleDateString("zh-CN") : "待更新"}
-                </div>
+                {stats.loading ? (
+                  <div className="text-lg font-semibold text-purple-600">加载中...</div>
+                ) : (
+                  <div className="text-lg font-semibold text-purple-600">
+                    {stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleDateString("zh-CN") : "待更新"}
+                  </div>
+                )}
                 <p className="text-sm text-gray-500">最近更新时间</p>
               </CardHeader>
               <CardContent className="text-center">

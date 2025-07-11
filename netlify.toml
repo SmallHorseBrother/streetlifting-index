@@ -2,10 +2,11 @@
   command = "npm run build"
   publish = "out"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# 移除通配符重定向，让Next.js静态导出的路由自然工作
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
 
 [build.environment]
   NEXT_PUBLIC_SUPABASE_URL = "https://chawreimucaalwgqdjra.supabase.co"
