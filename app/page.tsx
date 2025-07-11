@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, Users, Calculator, BookOpen } from "lucide-react"
+import { TrendingUp, Users, Calculator, BookOpen, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { RecentSubmissions } from "@/components/recent-submissions"
@@ -11,7 +11,6 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 
 async function getStats() {
   try {
-    // 使用 count 查询来获取准确的数据总数，避免传输不必要的数据
     const { count: totalCount, error: submissionsError } = await supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
@@ -35,8 +34,7 @@ async function getStats() {
   }
 }
 
-// 添加页面级别的重新验证设置
-export const revalidate = 0 // 禁用缓存，每次都重新获取数据
+export const revalidate = 0
 
 export default async function HomePage() {
   const { totalCount, lastUpdated } = await getStats()
@@ -51,25 +49,13 @@ export default async function HomePage() {
               <TrendingUp className="h-8 w-8 text-blue-600" />
               <span className="ml-2 text-xl font-bold text-gray-900">引体向上力量系数</span>
             </div>
-            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-900 hover:text-blue-600">
-                首页
-              </Link>
-              <Link href="/submit" className="text-gray-700 hover:text-blue-600">
-                数据提交
-              </Link>
-              <Link href="/calculator" className="text-gray-700 hover:text-blue-600">
-                公式计算器
-              </Link>
-              <Link href="/data" className="text-gray-700 hover:text-blue-600">
-                社区数据
-              </Link>
-              <Link href="/methodology" className="text-gray-700 hover:text-blue-600">
-                方法论
-              </Link>
+              <Link href="/" className="text-gray-900 hover:text-blue-600">首页</Link>
+              <Link href="/calculator" className="text-gray-700 hover:text-blue-600">力量计算器</Link>
+              <Link href="/submit" className="text-gray-700 hover:text-blue-600">数据提交</Link>
+              <Link href="/data" className="text-gray-700 hover:text-blue-600">社区数据</Link>
+              <Link href="/methodology" className="text-gray-700 hover:text-blue-600">方法论</Link>
             </div>
-            {/* Mobile Navigation */}
             <div className="flex items-center md:hidden">
               <MobileNav />
             </div>
@@ -77,19 +63,37 @@ export default async function HomePage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      {/* Hero Section with Prominent CTAs */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">世界首创的引体向上力量系数</h1>
-          <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto">
-            由<span className="text-indigo-600 font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
+          <h1 className="text-5xl font-bold mb-6">世界首创的引体向上力量系数</h1>
+          <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">
+            由<span className="font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
           </p>
-          <div className="flex justify-center space-x-4 mb-8">
+          
+          {/* Primary CTAs */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+            <Link href="/calculator">
+              <Button size="lg" className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-8 py-6 text-lg flex items-center justify-center">
+                <Calculator className="mr-2 h-6 w-6" />
+                计算我的力量分
+              </Button>
+            </Link>
+            <Link href="/submit">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 px-8 py-6 text-lg flex items-center justify-center">
+                <Users className="mr-2 h-6 w-6" />
+                贡献我的数据
+              </Button>
+            </Link>
+          </div>
+
+          {/* Social Links */}
+          <div className="flex justify-center space-x-4">
             <a
               href="https://space.bilibili.com/495933903"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 flex items-center"
+              className="text-white/80 hover:text-white flex items-center"
             >
               <svg className="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z" />
@@ -100,7 +104,7 @@ export default async function HomePage() {
               href="https://www.douyin.com/user/MS4wLjABAAAAy7udlkayIqU8bv2_78wy-WnexjBe0yqo1VoKwLlwCmee2p52Wzpdlf2zcoy8pJNm"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-red-600 hover:text-red-800 flex items-center"
+              className="text-white/80 hover:text-white flex items-center"
             >
               <svg className="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
@@ -108,45 +112,75 @@ export default async function HomePage() {
               抖音主页
             </a>
           </div>
-          <Link href="/submit">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
-              贡献我的数据
-            </Button>
-          </Link>
         </div>
       </section>
 
-      {/* Dynamic Data Display */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
+      {/* Feature Cards */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 -mt-12">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <Card className="bg-white shadow-lg">
-              <CardHeader className="text-center">
-                <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <CardTitle className="text-2xl">数据收录状态</CardTitle>
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Calculator Card */}
+            <Card className="bg-white shadow-xl transform hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="text-center pb-4">
+                <Calculator className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                <CardTitle className="text-xl text-green-700">力量计算器</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-4xl font-bold text-blue-600 mb-2">{totalCount.toLocaleString()}</div>
-                <p className="text-gray-600">条有效数据已收录</p>
+                <p className="text-gray-600 mb-4">快速计算你的引体向上力量分数，评估训练水平</p>
+                <Link href="/calculator">
+                  <Button className="w-full bg-green-600 hover:bg-green-700">
+                    开始计算
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-lg">
-              <CardHeader className="text-center">
-                <Calculator className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <CardTitle className="text-2xl">公式状态</CardTitle>
+            {/* Data Submission Card */}
+            <Card className="bg-white shadow-xl transform hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="text-center pb-4">
+                <Users className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                <CardTitle className="text-xl text-blue-700">数据提交</CardTitle>
+                <div className="text-3xl font-bold text-blue-600">{totalCount.toLocaleString()}</div>
+                <p className="text-sm text-gray-500">条数据已收录</p>
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-lg font-semibold text-green-600 mb-2">
+                <Link href="/submit">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                    提交数据
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Formula Status Card */}
+            <Card className="bg-white shadow-xl transform hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="text-center pb-4">
+                <TrendingUp className="h-12 w-12 text-purple-600 mx-auto mb-2" />
+                <CardTitle className="text-xl text-purple-700">公式状态</CardTitle>
+                <div className="text-lg font-semibold text-purple-600">
                   {lastUpdated ? new Date(lastUpdated).toLocaleDateString("zh-CN") : "待更新"}
                 </div>
-                <p className="text-gray-600">公式最近更新时间</p>
+                <p className="text-sm text-gray-500">最近更新时间</p>
+              </CardHeader>
+              <CardContent className="text-center">
+                <Link href="/methodology">
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                    了解原理
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
+        </div>
+      </section>
 
-          {/* Project Introduction */}
-          <Card className="bg-white shadow-lg">
+      {/* Project Introduction */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <Card className="border-0 shadow-none">
             <CardHeader>
               <CardTitle className="text-2xl text-center mb-4">项目简介</CardTitle>
             </CardHeader>
@@ -188,54 +222,6 @@ export default async function HomePage() {
             </Link>
           </div>
           <RecentSubmissions />
-        </div>
-      </section>
-
-      {/* Quick Actions */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">快速开始</h2>
-          <div className="grid md:grid-cols-4 gap-8">
-            <Link href="/submit">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <CardTitle>提交数据</CardTitle>
-                  <CardDescription>分享你的引体向上成绩，为社区贡献数据</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-
-            <Link href="/calculator">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <Calculator className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <CardTitle>力量计算器</CardTitle>
-                  <CardDescription>使用最新公式计算你的力量指数</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-
-            <Link href="/data">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <TrendingUp className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                  <CardTitle>社区数据</CardTitle>
-                  <CardDescription>查看其他用户的成绩和训练视频</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-
-            <Link href="/methodology">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <BookOpen className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-                  <CardTitle>方法论</CardTitle>
-                  <CardDescription>了解项目的科学依据和计算方法</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          </div>
         </div>
       </section>
 
