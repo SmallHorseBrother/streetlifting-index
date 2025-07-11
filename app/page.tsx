@@ -66,9 +66,9 @@ export default async function HomePage() {
       {/* Hero Section with Prominent CTAs */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold mb-6">世界首创的引体向上力量系数</h1>
-          <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">
-            由<span className="font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">世界首创的引体向上力量系数</h1>
+          <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto">
+            由北京大学博士生<span className="text-indigo-600 font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
           </p>
           
           {/* Primary CTAs */}
