@@ -36,6 +36,7 @@ export default function DataPage() {
     gender: "all",
     pullupType: "all",
     formQuality: "all",
+    hasVideo: "all",
     search: "",
   })
 
@@ -73,6 +74,14 @@ export default function DataPage() {
 
     if (filters.formQuality !== "all") {
       filtered = filtered.filter((sub) => sub.form_quality === filters.formQuality)
+    }
+
+    if (filters.hasVideo !== "all") {
+      if (filters.hasVideo === "with_video") {
+        filtered = filtered.filter((sub) => sub.video_url !== null && sub.video_url !== "")
+      } else if (filters.hasVideo === "without_video") {
+        filtered = filtered.filter((sub) => sub.video_url === null || sub.video_url === "")
+      }
     }
 
     if (filters.search) {
@@ -199,7 +208,7 @@ export default function DataPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 <div>
                   <Select value={filters.gender} onValueChange={(value) => setFilters({ ...filters, gender: value })}>
                     <SelectTrigger>
@@ -247,6 +256,22 @@ export default function DataPage() {
                 </div>
 
                 <div>
+                  <Select
+                    value={filters.hasVideo}
+                    onValueChange={(value) => setFilters({ ...filters, hasVideo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="是否有视频" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部</SelectItem>
+                      <SelectItem value="with_video">包含视频</SelectItem>
+                      <SelectItem value="without_video">不包含视频</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2 lg:col-span-3 xl:col-span-1">
                   <Input
                     placeholder="搜索用户名..."
                     value={filters.search}
@@ -389,7 +414,7 @@ export default function DataPage() {
               <Button
                 variant="outline"
                 className="mt-4 bg-transparent"
-                onClick={() => setFilters({ gender: "all", pullupType: "all", formQuality: "all", search: "" })}
+                onClick={() => setFilters({ gender: "all", pullupType: "all", formQuality: "all", hasVideo: "all", search: "" })}
               >
                 清除筛选条件
               </Button>
