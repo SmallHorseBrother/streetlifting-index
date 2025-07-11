@@ -11,7 +11,10 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 
 async function getStats() {
   try {
-    const { data: submissions, error: submissionsError } = await supabase.from("submissions").select("id")
+    // 使用 count 查询来获取准确的数据总数，避免传输不必要的数据
+    const { count: totalCount, error: submissionsError } = await supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
 
     const { data: formulas, error: formulasError } = await supabase
       .from("formulas")
@@ -24,13 +27,16 @@ async function getStats() {
     }
 
     return {
-      totalCount: submissions?.length || 0,
+      totalCount: totalCount || 0,
       lastUpdated: formulas?.[0]?.last_updated || null,
     }
   } catch (error) {
     return { totalCount: 0, lastUpdated: null }
   }
 }
+
+// 添加页面级别的重新验证设置
+export const revalidate = 0 // 禁用缓存，每次都重新获取数据
 
 export default async function HomePage() {
   const { totalCount, lastUpdated } = await getStats()

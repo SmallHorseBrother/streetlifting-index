@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { TrendingUp, Calculator, Info } from "lucide-react"
+import { TrendingUp, Calculator, Info, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { DonationSection } from "@/components/donation-section"
@@ -34,6 +35,8 @@ export default function CalculatorPage() {
     bodyweight: "",
     addedWeight: "",
     reps: "",
+    formQuality: "",
+    penaltyWeight: 3,
   })
   const [result, setResult] = useState<{ estimated_1rm: number; final_score: number; coefficient: number } | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
@@ -43,6 +46,15 @@ export default function CalculatorPage() {
   useEffect(() => {
     fetchFormulas()
   }, [])
+
+  // 当动作质量改变时，自动调整惩罚重量到合适的范围
+  useEffect(() => {
+    if (formData.formQuality === "Minor_Cheat" && formData.penaltyWeight > 5) {
+      setFormData(prev => ({ ...prev, penaltyWeight: 3 }))
+    } else if (formData.formQuality === "Major_Cheat" && formData.penaltyWeight < 5) {
+      setFormData(prev => ({ ...prev, penaltyWeight: 10 }))
+    }
+  }, [formData.formQuality])
 
   const fetchFormulas = async () => {
     try {
@@ -71,10 +83,19 @@ export default function CalculatorPage() {
       const bodyweight = Number.parseFloat(formData.bodyweight)
       const added_weight = Number.parseFloat(formData.addedWeight)
       const reps = Number.parseInt(formData.reps)
+      const penalty_weight = ["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0
 
       // Validate input
-      if (!gender || !bodyweight || added_weight === undefined || !reps) {
+      if (!gender || !bodyweight || added_weight === undefined || !reps || !formData.formQuality) {
         throw new Error("Missing required parameters")
+      }
+
+      // Apply penalty weight to added weight
+      const adjusted_added_weight = added_weight - penalty_weight
+
+      // Check if adjusted weight is too low
+      if (adjusted_added_weight < -bodyweight) {
+        throw new Error("惩罚重量过高，调整后的负重不能使总重量为负")
       }
 
       // Get formula coefficients for the specified gender
@@ -88,7 +109,7 @@ export default function CalculatorPage() {
         throw new Error("Formula not found for specified gender")
       }
 
-      const totalWeight = bodyweight + added_weight
+      const totalWeight = bodyweight + adjusted_added_weight
 
       // If reps is 1, the total weight is already the 1RM
       let totalEstimated1RM = totalWeight;
@@ -255,6 +276,58 @@ export default function CalculatorPage() {
                     </p>
                   </div>
 
+                  <div>
+                    <Label htmlFor="formQuality">动作质量</Label>
+                    <Select
+                      value={formData.formQuality}
+                      onValueChange={(value) => setFormData({ ...formData, formQuality: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择动作质量" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Competition">比赛级（标准动作）</SelectItem>
+                        <SelectItem value="Minor_Cheat">轻微借力</SelectItem>
+                        <SelectItem value="Major_Cheat">严重借力</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      请诚实评估动作质量，这将影响最终的力量评分。
+                    </p>
+                  </div>
+
+                  {["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) && (
+                    <div>
+                      <Label htmlFor="penaltyWeight">
+                        惩罚重量: {formData.penaltyWeight}kg
+                      </Label>
+                      <Slider
+                        id="penaltyWeight"
+                        min={formData.formQuality === "Minor_Cheat" ? 2 : 5}
+                        max={formData.formQuality === "Minor_Cheat" ? 5 : 20}
+                        step={0.5}
+                        value={[formData.penaltyWeight]}
+                        onValueChange={(value) => setFormData({ ...formData, penaltyWeight: value[0] })}
+                        className="mt-2"
+                      />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {formData.formQuality === "Minor_Cheat" 
+                          ? "轻微借力：2-5kg 惩罚重量"
+                          : "严重借力：5-20kg 惩罚重量"
+                        }
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.formQuality === "Competition" && (
+                    <Alert className="border-green-200 bg-green-50">
+                      <AlertTriangle className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-green-800">
+                        <strong>比赛级动作：</strong>无惩罚重量，按标准动作计算力量分数。
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={isCalculating}>
                     {isCalculating ? "计算中..." : "计算力量指数"}
                   </Button>
@@ -270,6 +343,14 @@ export default function CalculatorPage() {
                   <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                     <h3 className="font-semibold text-green-800 mb-2">计算结果</h3>
                     <div className="space-y-2">
+                      {["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) && (
+                        <p className="text-orange-700">
+                          <strong>惩罚重量：</strong> -{formData.penaltyWeight}kg
+                        </p>
+                      )}
+                      <p className="text-green-700">
+                        <strong>实际用于计算的负重：</strong> {(Number.parseFloat(formData.addedWeight) - (["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0)).toFixed(1)} kg
+                      </p>
                       <p className="text-green-700">
                         <strong>估算1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
                       </p>
