@@ -133,6 +133,21 @@ export default function CalculatorPage() {
     return bestReps
   }
 
+  // Continuous reps estimation by inverting each formula then averaging
+  const estimateRepsForTarget1RMContinuous = (targetTotal1RM: number, totalWorkingWeight: number) => {
+    if (totalWorkingWeight <= 0 || targetTotal1RM <= 0) return 0
+    const ratio = targetTotal1RM / totalWorkingWeight
+    // Invert Epley: ratio = 1 + 0.0333 r
+    const rE = (ratio - 1) / 0.0333
+    // Invert Brzycki: ratio = 36 / (37 - r) => r = 37 - 36/ratio
+    const rB = 37 - 36 / ratio
+    // Invert Lombardi: ratio = r^0.1 => r = ratio^10
+    const rL = Math.pow(ratio, 10)
+    // Average and clamp to [0.1, 36]
+    const rAvg = (rE + rB + rL) / 3
+    return Math.max(0.1, Math.min(36, rAvg))
+  }
+
   // Day max estimation (without quality multiplier; using penalty only)
   type RestCat = "short" | "moderate" | "long" | "very_long"
   const restMultiplier = (cat: RestCat) => {
@@ -289,14 +304,17 @@ export default function CalculatorPage() {
         if (adjusted_added_weight < -bodyweight || totalWorkingWeight <= 0) {
           throw new Error("输入的做组重量或惩罚不合理，导致总重量无效")
         }
-        const reps = estimateRepsForTarget1RM(targetTotal1RM, totalWorkingWeight)
+        let repsContinuous = estimateRepsForTarget1RMContinuous(targetTotal1RM, totalWorkingWeight)
+        if (totalWorkingWeight >= targetTotal1RM) {
+          repsContinuous = Math.min(repsContinuous, 1)
+        }
         const coefficient = computeCoefficient(bodyweight, formula)
         const finalScore = targetTotal1RM * coefficient
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,
           coefficient,
-          computed_reps: reps,
+          computed_reps: Number.parseFloat(repsContinuous.toFixed(1)),
           adjusted_added_weight,
           total_1rm: targetTotal1RM,
         })
@@ -749,7 +767,7 @@ export default function CalculatorPage() {
                       {mode === "reverse_reps" && (
                         <>
                           <p className="text-green-700">
-                            <strong>反推可完成次数：</strong> {result.computed_reps} 次
+                            <strong>反推可完成次数：</strong> {result.computed_reps?.toFixed ? result.computed_reps.toFixed(1) : result.computed_reps} 次
                           </p>
                           <p className="text-green-700">
                             <strong>实际用于计算的负重：</strong> {result.adjusted_added_weight?.toFixed(1)} kg
