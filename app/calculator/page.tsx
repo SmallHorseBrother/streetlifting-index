@@ -15,6 +15,7 @@ import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { DonationSection } from "@/components/donation-section"
 import { MobileNav } from "@/components/ui/mobile-nav"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -29,16 +30,35 @@ interface FormulaCoefficients {
   total_submissions_used: number
 }
 
+type CalcResult = {
+  estimated_1rm: number
+  final_score: number
+  coefficient: number
+  computed_added_weight?: number
+  computed_reps?: number
+  adjusted_added_weight?: number
+  total_1rm?: number
+}
+
 export default function CalculatorPage() {
   const [formData, setFormData] = useState({
     gender: "",
     bodyweight: "",
     addedWeight: "",
+    added1RM: "",
+    workingAddedWeight: "",
     reps: "",
+    sets: "",
+    restCat: "",
+    dayFirstType: "", // "RIR" | "Achieved"
+    dayFirstValue: "",
+    dayLastType: "",
+    dayLastValue: "",
     formQuality: "",
     penaltyWeight: 3,
   })
-  const [result, setResult] = useState<{ estimated_1rm: number; final_score: number; coefficient: number } | null>(null)
+  const [mode, setMode] = useState<"forward" | "reverse_weight" | "reverse_reps" | "day_max">("forward")
+  const [result, setResult] = useState<CalcResult | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
   const [error, setError] = useState("")
   const [formulas, setFormulas] = useState<{ Male?: FormulaCoefficients; Female?: FormulaCoefficients }>({})
@@ -72,6 +92,118 @@ export default function CalculatorPage() {
     }
   }
 
+  const computeCoefficient = (W: number, formula: FormulaCoefficients) => {
+    return (
+      formula.coeff_b * Math.pow(W, 4) +
+      formula.coeff_c * Math.pow(W, 3) +
+      formula.coeff_d * Math.pow(W, 2) +
+      formula.coeff_e * W +
+      formula.coeff_f
+    )
+  }
+
+  const estimateTotal1RMFromTotalWeightAndReps = (totalWeight: number, reps: number) => {
+    if (reps === 1) return totalWeight
+    if (reps >= 37) throw new Error("完成次数必须小于37次")
+    const epley1RM = totalWeight * (1 + 0.0333 * reps)
+    const brzycki1RM = totalWeight * (36 / (37 - reps))
+    const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
+    return (epley1RM + brzycki1RM + lombardi1RM) / 3
+  }
+
+  const invertTotalWeightForTarget1RM = (targetTotal1RM: number, reps: number) => {
+    if (reps === 1) return targetTotal1RM
+    if (reps < 1 || reps >= 37) throw new Error("完成次数必须在1到36之间")
+    const wtE = targetTotal1RM / (1 + 0.0333 * reps)
+    const wtB = targetTotal1RM * ((37 - reps) / 36)
+    const wtL = targetTotal1RM / Math.pow(reps, 0.1)
+    return (wtE + wtB + wtL) / 3
+  }
+
+  const estimateRepsForTarget1RM = (targetTotal1RM: number, totalWorkingWeight: number) => {
+    let bestReps = 1
+    let bestDiff = Math.abs(estimateTotal1RMFromTotalWeightAndReps(totalWorkingWeight, 1) - targetTotal1RM)
+    for (let r = 2; r <= 36; r++) {
+      const diff = Math.abs(estimateTotal1RMFromTotalWeightAndReps(totalWorkingWeight, r) - targetTotal1RM)
+      if (diff < bestDiff) {
+        bestDiff = diff
+        bestReps = r
+      }
+    }
+    return bestReps
+  }
+
+  // Day max estimation (without quality multiplier; using penalty only)
+  type RestCat = "short" | "moderate" | "long" | "very_long"
+  const restMultiplier = (cat: RestCat) => {
+    switch (cat) {
+      case "short": return 1.6
+      case "moderate": return 1.25
+      case "long": return 1.0
+      case "very_long": return 0.85
+      default: return 1.0
+    }
+  }
+
+  const intensityAvg = (reps: number) => {
+    const r = Math.max(1, Math.min(36, Math.round(reps)))
+    const e = 1 / (1 + 0.0333 * r)
+    const b = (37 - r) / 36
+    const l = Math.pow(r, -0.1)
+    return (e + b + l) / 3
+  }
+
+  const estimateDayMaxFromSets = (params: {
+    bodyweight: number
+    addedWeight: number
+    penaltyWeight: number
+    sets: number
+    reps: number
+    restCat: RestCat
+    firstSet?: { type: "RIR" | "Achieved"; value: number }
+    lastSet?: { type: "RIR" | "Achieved"; value: number }
+    alphaPerRep?: number
+  }) => {
+    const { bodyweight: W, addedWeight: A, penaltyWeight: P, sets: n, reps: r, restCat, firstSet, lastSet, alphaPerRep = 0.004 } = params
+    const adjustedAdded = A - P
+    const Tw = W + adjustedAdded
+    if (!Number.isFinite(Tw) || Tw <= 0) throw new Error("输入导致总重量无效")
+    const rm = restMultiplier(restCat)
+    const beta = alphaPerRep * r * rm
+    const lastAvail = Math.max(0.75, 1 - (n - 1) * beta)
+    const effReps = (input?: { type: "RIR" | "Achieved"; value: number }) => {
+      if (!input) return null
+      const v = input.type === "RIR" ? r + input.value : input.value
+      return Math.max(1, Math.min(36, v))
+    }
+    const r1 = effReps(firstSet)
+    const rn = effReps(lastSet)
+    let D_first: number | null = null
+    let D_last: number | null = null
+    if (r1 !== null) {
+      const I1 = intensityAvg(r1)
+      D_first = Tw / I1
+    }
+    if (rn !== null) {
+      const In = intensityAvg(rn)
+      D_last = Tw / (In * lastAvail)
+    }
+    let D_day: number
+    if (D_first !== null && D_last !== null) {
+      // 第一组占比80%，最后一组占比20%
+      const w_first = 0.8
+      const w_last = 0.2
+      D_day = w_first * D_first + w_last * D_last
+    } else if (D_first !== null) {
+      D_day = D_first
+    } else if (D_last !== null) {
+      D_day = D_last
+    } else {
+      throw new Error("请输入第一组或最后一组的RIR/实际次数信息")
+    }
+    return { total1RM: D_day, added1RM: D_day - W }
+  }
+
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsCalculating(true)
@@ -81,21 +213,10 @@ export default function CalculatorPage() {
     try {
       const gender = formData.gender
       const bodyweight = Number.parseFloat(formData.bodyweight)
-      const added_weight = Number.parseFloat(formData.addedWeight)
-      const reps = Number.parseInt(formData.reps)
       const penalty_weight = ["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0
 
-      // Validate input
-      if (!gender || !bodyweight || added_weight === undefined || !reps || !formData.formQuality) {
-        throw new Error("Missing required parameters")
-      }
-
-      // Apply penalty weight to added weight
-      const adjusted_added_weight = added_weight - penalty_weight
-
-      // Check if adjusted weight is too low
-      if (adjusted_added_weight < -bodyweight) {
-        throw new Error("惩罚重量过高，调整后的负重不能使总重量为负")
+      if (!gender || !bodyweight || !formData.formQuality) {
+        throw new Error("请完整填写性别、体重和动作质量")
       }
 
       // Get formula coefficients for the specified gender
@@ -108,48 +229,116 @@ export default function CalculatorPage() {
       if (formulaError || !formula) {
         throw new Error("Formula not found for specified gender")
       }
+      if (mode === "forward") {
+        const added_weight = Number.parseFloat(formData.addedWeight)
+        const reps = Number.parseInt(formData.reps)
+        if (!Number.isFinite(added_weight) || !Number.isFinite(reps)) {
+          throw new Error("请填写附加负重与次数")
+        }
+        const adjusted_added_weight = added_weight - penalty_weight
+        if (adjusted_added_weight < -bodyweight) {
+          throw new Error("惩罚重量过高，调整后的负重不能使总重量为负")
+        }
+        const totalWeight = bodyweight + adjusted_added_weight
+        const totalEstimated1RM = estimateTotal1RMFromTotalWeightAndReps(totalWeight, reps)
+        const estimated1RM_added_weight = totalEstimated1RM - bodyweight
+        const coefficient = computeCoefficient(bodyweight, formula)
+        const finalScore = totalEstimated1RM * coefficient
+        setResult({
+          estimated_1rm: estimated1RM_added_weight,
+          final_score: finalScore,
+          coefficient,
+          adjusted_added_weight,
+          total_1rm: totalEstimated1RM,
+        })
+      } else if (mode === "reverse_weight") {
+        const added1RM = Number.parseFloat(formData.added1RM)
+        const reps = Number.parseInt(formData.reps)
+        if (!Number.isFinite(added1RM) || !Number.isFinite(reps)) {
+          throw new Error("请填写负重1RM与次数")
+        }
+        const targetTotal1RM = bodyweight + added1RM
+        const totalWorkingWeight = invertTotalWeightForTarget1RM(targetTotal1RM, reps)
+        if (totalWorkingWeight <= 0) {
+          throw new Error("计算得到的总重量无效，请检查输入")
+        }
+        const adjusted_added_weight = totalWorkingWeight - bodyweight
+        if (adjusted_added_weight < -bodyweight) {
+          throw new Error("惩罚重量过高，调整后的负重不能使总重量为负")
+        }
+        const added_weight = adjusted_added_weight + penalty_weight
+        const coefficient = computeCoefficient(bodyweight, formula)
+        const finalScore = targetTotal1RM * coefficient
+        setResult({
+          estimated_1rm: added1RM,
+          final_score: finalScore,
+          coefficient,
+          computed_added_weight: added_weight,
+          adjusted_added_weight,
+          total_1rm: targetTotal1RM,
+        })
+      } else if (mode === "reverse_reps") {
+        const added1RM = Number.parseFloat(formData.added1RM)
+        const workingAddedWeight = Number.parseFloat(formData.workingAddedWeight)
+        if (!Number.isFinite(added1RM) || !Number.isFinite(workingAddedWeight)) {
+          throw new Error("请填写负重1RM与做组重量")
+        }
+        const targetTotal1RM = bodyweight + added1RM
+        const adjusted_added_weight = workingAddedWeight - penalty_weight
+        const totalWorkingWeight = bodyweight + adjusted_added_weight
+        if (adjusted_added_weight < -bodyweight || totalWorkingWeight <= 0) {
+          throw new Error("输入的做组重量或惩罚不合理，导致总重量无效")
+        }
+        const reps = estimateRepsForTarget1RM(targetTotal1RM, totalWorkingWeight)
+        const coefficient = computeCoefficient(bodyweight, formula)
+        const finalScore = targetTotal1RM * coefficient
+        setResult({
+          estimated_1rm: added1RM,
+          final_score: finalScore,
+          coefficient,
+          computed_reps: reps,
+          adjusted_added_weight,
+          total_1rm: targetTotal1RM,
+        })
+      } else if (mode === "day_max") {
+        const sets = Number.parseInt(formData.sets)
+        const reps = Number.parseInt(formData.reps)
+        const addedWeight = Number.parseFloat(formData.addedWeight)
+        const restCat = (formData.restCat || "long") as any
+        if (!Number.isFinite(sets) || sets <= 0) throw new Error("请填写有效的组数")
+        if (!Number.isFinite(reps) || reps <= 0) throw new Error("请填写有效的每组次数")
+        if (!Number.isFinite(addedWeight)) throw new Error("请填写做组重量")
+        const firstSet = formData.dayFirstType && formData.dayFirstValue
+          ? { type: formData.dayFirstType as any, value: Number.parseFloat(formData.dayFirstValue) }
+          : undefined
+        const lastSet = formData.dayLastType && formData.dayLastValue
+          ? { type: formData.dayLastType as any, value: Number.parseFloat(formData.dayLastValue) }
+          : undefined
 
-      const totalWeight = bodyweight + adjusted_added_weight
-
-      // If reps is 1, the total weight is already the 1RM
-      let totalEstimated1RM = totalWeight;
-      
-      // Only calculate using formulas if reps > 1
-      if (reps > 1) {
-        // The Brzycki formula is undefined for reps >= 37.
-        if (reps >= 37) {
-          throw new Error("完成次数必须小于37次")
+        if (!firstSet && !lastSet) {
+          throw new Error("请至少输入第一组或最后一组的信息")
         }
 
-        // Calculate 1RM using three different formulas for total weight
-        const epley1RM = totalWeight * (1 + 0.0333 * reps)
-        const brzycki1RM = totalWeight * (36 / (37 - reps))
-        const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
+        const { total1RM, added1RM } = estimateDayMaxFromSets({
+          bodyweight,
+          addedWeight,
+          penaltyWeight: penalty_weight,
+          sets,
+          reps,
+          restCat,
+          firstSet,
+          lastSet,
+        })
 
-        // Average the results for a more accurate total 1RM
-        totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
+        const coefficient = computeCoefficient(bodyweight, formula)
+        const finalScore = total1RM * coefficient
+        setResult({
+          estimated_1rm: added1RM,
+          final_score: finalScore,
+          coefficient,
+          adjusted_added_weight: addedWeight - penalty_weight,
+        })
       }
-
-      // The estimated 1RM for added weight is the total 1RM minus bodyweight
-      const estimated1RM_added_weight = totalEstimated1RM - bodyweight
-
-      // Calculate strength coefficient using polynomial (V0.1 formula)
-      const W = bodyweight
-      const coefficient =
-        formula.coeff_b * Math.pow(W, 4) +
-        formula.coeff_c * Math.pow(W, 3) +
-        formula.coeff_d * Math.pow(W, 2) +
-        formula.coeff_e * W +
-        formula.coeff_f
-
-      // Calculate final strength score using total estimated 1RM
-      const finalScore = totalEstimated1RM * coefficient
-
-      setResult({
-        estimated_1rm: estimated1RM_added_weight,
-        final_score: finalScore,
-        coefficient: coefficient,
-      })
     } catch (err: any) {
       setError(err.message || "计算失败，请检查输入数据或稍后重试")
       console.error("Calculation error:", err)
@@ -189,6 +378,9 @@ export default function CalculatorPage() {
               <Link href="/methodology" className="text-gray-700 hover:text-blue-600">
                 方法论
               </Link>
+              <Link href="/stories" className="text-gray-700 hover:text-blue-600">
+                街头健身故事会
+              </Link>
             </div>
             {/* Mobile Navigation */}
             <div className="flex items-center md:hidden">
@@ -217,6 +409,19 @@ export default function CalculatorPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCalculate} className="space-y-4">
+                  <div>
+                    <Label>计算模式</Label>
+                    <div className="mt-2">
+                      <Tabs value={mode} onValueChange={(v) => { setMode(v as any); setResult(null); setError("") }}>
+                        <TabsList>
+                          <TabsTrigger value="forward">正向计算</TabsTrigger>
+                          <TabsTrigger value="reverse_weight">反推做组重量</TabsTrigger>
+                          <TabsTrigger value="reverse_reps">反推次数</TabsTrigger>
+                          <TabsTrigger value="day_max">做组极限估算</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                  </div>
                   <div>
                     <Label htmlFor="gender">性别</Label>
                     <Select
@@ -247,34 +452,196 @@ export default function CalculatorPage() {
                       />
                     </div>
 
+                    {mode === "forward" && (
+                      <div>
+                        <Label htmlFor="addedWeight">附加负重 (kg)</Label>
+                        <Input
+                          id="addedWeight"
+                          type="number"
+                          step="0.1"
+                          placeholder="0"
+                          value={formData.addedWeight}
+                          onChange={(e) => setFormData({ ...formData, addedWeight: e.target.value })}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {mode === "reverse_weight" && (
+                      <div>
+                        <Label htmlFor="added1RM">负重1RM (kg)</Label>
+                        <Input
+                          id="added1RM"
+                          type="number"
+                          step="0.1"
+                          placeholder="例如 50"
+                          value={formData.added1RM}
+                          onChange={(e) => setFormData({ ...formData, added1RM: e.target.value })}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {mode === "reverse_reps" && (
+                      <div>
+                        <Label htmlFor="added1RM">负重1RM (kg)</Label>
+                        <Input
+                          id="added1RM"
+                          type="number"
+                          step="0.1"
+                          placeholder="例如 50"
+                          value={formData.added1RM}
+                          onChange={(e) => setFormData({ ...formData, added1RM: e.target.value })}
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {mode === "reverse_reps" && (
                     <div>
-                      <Label htmlFor="addedWeight">附加负重 (kg)</Label>
+                      <Label htmlFor="workingAddedWeight">做组重量（附加负重）(kg)</Label>
                       <Input
-                        id="addedWeight"
+                        id="workingAddedWeight"
                         type="number"
                         step="0.1"
-                        placeholder="0"
-                        value={formData.addedWeight}
-                        onChange={(e) => setFormData({ ...formData, addedWeight: e.target.value })}
+                        placeholder="例如 20"
+                        value={formData.workingAddedWeight}
+                        onChange={(e) => setFormData({ ...formData, workingAddedWeight: e.target.value })}
                         required
                       />
                     </div>
-                  </div>
+                  )}
 
-                  <div>
-                    <Label htmlFor="reps">完成次数</Label>
-                    <Input
-                      id="reps"
-                      type="number"
-                      placeholder="8"
-                      value={formData.reps}
-                      onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
-                      required
-                    />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      建议输入5次以内的次数，结果更准确。
-                    </p>
-                  </div>
+                  {(mode === "forward" || mode === "reverse_weight") && (
+                    <div>
+                      <Label htmlFor="reps">完成次数</Label>
+                      <Input
+                        id="reps"
+                        type="number"
+                        placeholder="8"
+                        value={formData.reps}
+                        onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
+                        required
+                      />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        建议输入5次以内的次数，结果更准确。
+                      </p>
+                    </div>
+                  )}
+
+                  {mode === "day_max" && (
+                    <>
+                      <Alert className="mb-4 border-blue-200 bg-blue-50">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <AlertDescription className="text-blue-800">
+                          <strong>做组极限估算：</strong>根据您的做组表现（组数、次数、休息时长）以及第一组或最后一组的完成情况，科学估算您当天的最佳极限负重能力。（若两者都填，第一组信息占比80%）
+                        </AlertDescription>
+                      </Alert>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="addedWeight_day">做组重量（附加负重）(kg)</Label>
+                          <Input
+                            id="addedWeight_day"
+                            type="number"
+                            step="0.1"
+                            placeholder="例如 50"
+                            value={formData.addedWeight}
+                            onChange={(e) => setFormData({ ...formData, addedWeight: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="sets">组数</Label>
+                          <Input
+                            id="sets"
+                            type="number"
+                            placeholder="例如 5"
+                            value={formData.sets}
+                            onChange={(e) => setFormData({ ...formData, sets: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="reps_day">每组次数</Label>
+                          <Input
+                            id="reps_day"
+                            type="number"
+                            placeholder="例如 5"
+                            value={formData.reps}
+                            onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="restCat">平均休息</Label>
+                          <Select
+                            value={formData.restCat}
+                            onValueChange={(value) => setFormData({ ...formData, restCat: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择休息时长" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="short">≤90秒</SelectItem>
+                              <SelectItem value="moderate">90秒-3分钟</SelectItem>
+                              <SelectItem value="long">3-5分钟</SelectItem>
+                              <SelectItem value="very_long">&gt;5分钟</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>第一组信息</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <Select
+                              value={formData.dayFirstType}
+                              onValueChange={(v) => setFormData({ ...formData, dayFirstType: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="类型 (可选)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="RIR">RIR</SelectItem>
+                                <SelectItem value="Achieved">实际次数</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              placeholder="数值 (可选)"
+                              value={formData.dayFirstValue}
+                              onChange={(e) => setFormData({ ...formData, dayFirstValue: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>最后一组信息</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <Select
+                              value={formData.dayLastType}
+                              onValueChange={(v) => setFormData({ ...formData, dayLastType: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="类型 (可选)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="RIR">RIR</SelectItem>
+                                <SelectItem value="Achieved">实际次数</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              placeholder="数值 (可选)"
+                              value={formData.dayLastValue}
+                              onChange={(e) => setFormData({ ...formData, dayLastValue: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <Label htmlFor="formQuality">动作质量</Label>
@@ -329,7 +696,15 @@ export default function CalculatorPage() {
                   )}
 
                   <Button type="submit" className="w-full" disabled={isCalculating}>
-                    {isCalculating ? "计算中..." : "计算力量指数"}
+                    {isCalculating
+                      ? "计算中..."
+                      : mode === "forward"
+                        ? "计算力量指数"
+                        : mode === "reverse_weight"
+                          ? "反推做组重量"
+                          : mode === "reverse_reps"
+                            ? "反推次数"
+                            : "做组极限估算"}
                   </Button>
                 </form>
 
@@ -348,12 +723,49 @@ export default function CalculatorPage() {
                           <strong>惩罚重量：</strong> -{formData.penaltyWeight}kg
                         </p>
                       )}
-                      <p className="text-green-700">
-                        <strong>实际用于计算的负重：</strong> {(Number.parseFloat(formData.addedWeight) - (["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0)).toFixed(1)} kg
-                      </p>
-                      <p className="text-green-700">
-                        <strong>估算1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
-                      </p>
+                      {mode === "forward" && (
+                        <>
+                          <p className="text-green-700">
+                            <strong>实际用于计算的负重：</strong> {(Number.parseFloat(formData.addedWeight) - (["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0)).toFixed(1)} kg
+                          </p>
+                          <p className="text-green-700">
+                            <strong>估算1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                          </p>
+                        </>
+                      )}
+                      {mode === "reverse_weight" && (
+                        <>
+                          <p className="text-green-700">
+                            <strong>反推做组重量（附加负重）：</strong> {result.computed_added_weight?.toFixed(1)} kg
+                          </p>
+                          <p className="text-green-700">
+                            <strong>实际用于计算的负重：</strong> {result.adjusted_added_weight?.toFixed(1)} kg
+                          </p>
+                          <p className="text-green-700">
+                            <strong>输入负重1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                          </p>
+                        </>
+                      )}
+                      {mode === "reverse_reps" && (
+                        <>
+                          <p className="text-green-700">
+                            <strong>反推可完成次数：</strong> {result.computed_reps} 次
+                          </p>
+                          <p className="text-green-700">
+                            <strong>实际用于计算的负重：</strong> {result.adjusted_added_weight?.toFixed(1)} kg
+                          </p>
+                          <p className="text-green-700">
+                            <strong>输入负重1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                          </p>
+                        </>
+                      )}
+                      {mode === "day_max" && (
+                        <>
+                          <p className="text-green-700">
+                            <strong>当天极限负重1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                          </p>
+                        </>
+                      )}
                       <p className="text-green-700">
                         <strong>最终力量分：</strong> {result.final_score.toFixed(0)} 分
                       </p>

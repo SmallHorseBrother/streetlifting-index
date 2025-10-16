@@ -66,6 +66,7 @@ export default function HomePage() {
               <Link href="/submit" className="text-gray-700 hover:text-blue-600">数据提交</Link>
               <Link href="/data" className="text-gray-700 hover:text-blue-600">社区数据</Link>
               <Link href="/methodology" className="text-gray-700 hover:text-blue-600">方法论</Link>
+              <Link href="/stories" className="text-gray-700 hover:text-blue-600">街头健身故事会</Link>
             </div>
             <div className="flex items-center md:hidden">
               <MobileNav />
@@ -94,6 +95,13 @@ export default function HomePage() {
               <Button size="lg" variant="outline" className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 px-8 py-6 text-lg flex items-center justify-center">
                 <Users className="mr-2 h-6 w-6" />
                 贡献我的数据
+              </Button>
+            </Link>
+            <Link href="/stories">
+              <Button size="lg" className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-6 text-lg flex items-center justify-center font-bold">
+                <span className="text-yellow-300 mr-2">🆕</span>
+                最新故事：刘金峰和肖林
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>

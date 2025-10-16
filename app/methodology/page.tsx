@@ -35,6 +35,9 @@ export default function MethodologyPage() {
               <Link href="/methodology" className="text-gray-900 hover:text-blue-600">
                 方法论
               </Link>
+              <Link href="/stories" className="text-gray-700 hover:text-blue-600">
+                街头健身故事会
+              </Link>
             </div>
             {/* Mobile Navigation */}
             <div className="flex items-center md:hidden">

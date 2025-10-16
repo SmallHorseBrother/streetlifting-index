@@ -29,6 +29,9 @@ export function MobileNav() {
           <Link href="/methodology" className="text-lg font-medium hover:text-blue-600 transition-colors">
             方法论
           </Link>
+          <Link href="/stories" className="text-lg font-medium hover:text-blue-600 transition-colors">
+            街头健身故事会
+          </Link>
         </nav>
       </SheetContent>
     </Sheet>
