@@ -161,6 +161,11 @@ export default function MethodologyPage() {
                         <p className="text-sm text-gray-600">明显借力完成动作</p>
                         <p className="text-sm font-medium">惩罚：5-20 kg（用户自评）</p>
                       </div>
+                      <div className="border-l-4 border-red-700 pl-4">
+                        <h5 className="font-semibold text-red-800">超严重借力</h5>
+                        <p className="text-sm text-gray-600">借力程度极高，显著影响成绩</p>
+                        <p className="text-sm font-medium">惩罚：20-50 kg（用户自评）</p>
+                      </div>
                     </div>
                   </div>
 

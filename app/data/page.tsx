@@ -21,7 +21,7 @@ interface Submission {
   bodyweight: number
   added_weight: number
   reps: number
-  form_quality: "Competition" | "Good" | "Minor_Cheat" | "Major_Cheat"
+  form_quality: "Competition" | "Good" | "Minor_Cheat" | "Major_Cheat" | "Extreme_Cheat"
   penalty_weight: number
   user_name: string | null
   video_url: string | null
@@ -99,6 +99,8 @@ export default function DataPage() {
         return "bg-yellow-100 text-yellow-800"
       case "Major_Cheat":
         return "bg-red-100 text-red-800"
+      case "Extreme_Cheat":
+        return "bg-red-200 text-red-900"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -112,6 +114,8 @@ export default function DataPage() {
         return "轻微借力"
       case "Major_Cheat":
         return "严重借力"
+      case "Extreme_Cheat":
+        return "超严重借力"
       default:
         return quality
     }
@@ -254,6 +258,7 @@ export default function DataPage() {
                       <SelectItem value="Competition">比赛级</SelectItem>
                       <SelectItem value="Minor_Cheat">轻微借力</SelectItem>
                       <SelectItem value="Major_Cheat">严重借力</SelectItem>
+                      <SelectItem value="Extreme_Cheat">超严重借力</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

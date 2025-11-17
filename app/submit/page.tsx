@@ -80,8 +80,13 @@ export default function SubmissionPage() {
     }
   }
 
-  const showPenaltySlider = ["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality)
-  const penaltyRange = formData.formQuality === "Minor_Cheat" ? [2, 5] : [5, 20]
+  const showPenaltySlider = ["Minor_Cheat", "Major_Cheat", "Extreme_Cheat"].includes(formData.formQuality)
+  const penaltyRange =
+    formData.formQuality === "Minor_Cheat"
+      ? [2, 5]
+      : formData.formQuality === "Major_Cheat"
+        ? [5, 20]
+        : [20, 50]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -235,8 +240,9 @@ export default function SubmissionPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Competition">比赛级标准 - 动作完美，符合比赛要求</SelectItem>
-                      <SelectItem value="Minor_Cheat">轻微借力 - 少量借力完成动作</SelectItem>
-                      <SelectItem value="Major_Cheat">严重借力 - 明显借力完成动作</SelectItem>
+                      <SelectItem value="Minor_Cheat">轻微借力（2-5kg） - 少量借力完成动作</SelectItem>
+                      <SelectItem value="Major_Cheat">严重借力（5-20kg） - 明显借力完成动作</SelectItem>
+                      <SelectItem value="Extreme_Cheat">超严重借力（20-50kg） - 借力明显影响成绩</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

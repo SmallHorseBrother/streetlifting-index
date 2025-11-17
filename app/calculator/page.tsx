@@ -69,10 +69,18 @@ export default function CalculatorPage() {
 
   // 当动作质量改变时，自动调整惩罚重量到合适的范围
   useEffect(() => {
-    if (formData.formQuality === "Minor_Cheat" && formData.penaltyWeight > 5) {
-      setFormData(prev => ({ ...prev, penaltyWeight: 3 }))
-    } else if (formData.formQuality === "Major_Cheat" && formData.penaltyWeight < 5) {
-      setFormData(prev => ({ ...prev, penaltyWeight: 10 }))
+    if (formData.formQuality === "Minor_Cheat") {
+      if (formData.penaltyWeight < 2 || formData.penaltyWeight > 5) {
+        setFormData(prev => ({ ...prev, penaltyWeight: 3 }))
+      }
+    } else if (formData.formQuality === "Major_Cheat") {
+      if (formData.penaltyWeight < 5 || formData.penaltyWeight > 20) {
+        setFormData(prev => ({ ...prev, penaltyWeight: 10 }))
+      }
+    } else if (formData.formQuality === "Extreme_Cheat") {
+      if (formData.penaltyWeight < 20 || formData.penaltyWeight > 50) {
+        setFormData(prev => ({ ...prev, penaltyWeight: 30 }))
+      }
     }
   }, [formData.formQuality])
 
@@ -133,19 +141,12 @@ export default function CalculatorPage() {
     return bestReps
   }
 
-  // Continuous reps estimation by inverting each formula then averaging
+  // Continuous reps estimation (Epley-only, linear inversion)
   const estimateRepsForTarget1RMContinuous = (targetTotal1RM: number, totalWorkingWeight: number) => {
     if (totalWorkingWeight <= 0 || targetTotal1RM <= 0) return 0
     const ratio = targetTotal1RM / totalWorkingWeight
-    // Invert Epley: ratio = 1 + 0.0333 r
     const rE = (ratio - 1) / 0.0333
-    // Invert Brzycki: ratio = 36 / (37 - r) => r = 37 - 36/ratio
-    const rB = 37 - 36 / ratio
-    // Invert Lombardi: ratio = r^0.1 => r = ratio^10
-    const rL = Math.pow(ratio, 10)
-    // Average and clamp to [0.1, 36]
-    const rAvg = (rE + rB + rL) / 3
-    return Math.max(0.1, Math.min(36, rAvg))
+    return Math.max(0.1, rE)
   }
 
   // Day max estimation (without quality multiplier; using penalty only)
@@ -228,7 +229,7 @@ export default function CalculatorPage() {
     try {
       const gender = formData.gender
       const bodyweight = Number.parseFloat(formData.bodyweight)
-      const penalty_weight = ["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0
+      const penalty_weight = ["Minor_Cheat", "Major_Cheat", "Extreme_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0
 
       if (!gender || !bodyweight || !formData.formQuality) {
         throw new Error("请完整填写性别、体重和动作质量")
@@ -304,10 +305,7 @@ export default function CalculatorPage() {
         if (adjusted_added_weight < -bodyweight || totalWorkingWeight <= 0) {
           throw new Error("输入的做组重量或惩罚不合理，导致总重量无效")
         }
-        let repsContinuous = estimateRepsForTarget1RMContinuous(targetTotal1RM, totalWorkingWeight)
-        if (totalWorkingWeight >= targetTotal1RM) {
-          repsContinuous = Math.min(repsContinuous, 1)
-        }
+        const repsContinuous = estimateRepsForTarget1RMContinuous(targetTotal1RM, totalWorkingWeight)
         const coefficient = computeCoefficient(bodyweight, formula)
         const finalScore = targetTotal1RM * coefficient
         setResult({
@@ -449,7 +447,7 @@ export default function CalculatorPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="选择性别" />
                       </SelectTrigger>
-                      <SelectContent>
+                    <SelectContent>
                         <SelectItem value="Male">男性</SelectItem>
                         <SelectItem value="Female">女性</SelectItem>
                       </SelectContent>
@@ -670,10 +668,11 @@ export default function CalculatorPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="选择动作质量" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Competition">比赛级（标准动作）</SelectItem>
-                        <SelectItem value="Minor_Cheat">轻微借力</SelectItem>
-                        <SelectItem value="Major_Cheat">严重借力</SelectItem>
+                    <SelectContent>
+                      <SelectItem value="Competition">比赛级（标准动作）</SelectItem>
+                      <SelectItem value="Minor_Cheat">轻微借力（2-5kg）</SelectItem>
+                      <SelectItem value="Major_Cheat">严重借力（5-20kg）</SelectItem>
+                      <SelectItem value="Extreme_Cheat">超严重借力（20-50kg）</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -681,24 +680,26 @@ export default function CalculatorPage() {
                     </p>
                   </div>
 
-                  {["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) && (
+                {["Minor_Cheat", "Major_Cheat", "Extreme_Cheat"].includes(formData.formQuality) && (
                     <div>
                       <Label htmlFor="penaltyWeight">
                         惩罚重量: {formData.penaltyWeight}kg
                       </Label>
                       <Slider
                         id="penaltyWeight"
-                        min={formData.formQuality === "Minor_Cheat" ? 2 : 5}
-                        max={formData.formQuality === "Minor_Cheat" ? 5 : 20}
+                      min={formData.formQuality === "Minor_Cheat" ? 2 : formData.formQuality === "Major_Cheat" ? 5 : 20}
+                      max={formData.formQuality === "Minor_Cheat" ? 5 : formData.formQuality === "Major_Cheat" ? 20 : 50}
                         step={0.5}
                         value={[formData.penaltyWeight]}
                         onValueChange={(value) => setFormData({ ...formData, penaltyWeight: value[0] })}
                         className="mt-2"
                       />
                       <p className="mt-2 text-sm text-muted-foreground">
-                        {formData.formQuality === "Minor_Cheat" 
-                          ? "轻微借力：2-5kg 惩罚重量"
-                          : "严重借力：5-20kg 惩罚重量"
+                      {formData.formQuality === "Minor_Cheat" 
+                        ? "轻微借力：2-5kg 惩罚重量"
+                        : formData.formQuality === "Major_Cheat"
+                          ? "严重借力：5-20kg 惩罚重量"
+                          : "超严重借力：20-50kg 惩罚重量"
                         }
                       </p>
                     </div>
@@ -736,7 +737,7 @@ export default function CalculatorPage() {
                   <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                     <h3 className="font-semibold text-green-800 mb-2">计算结果</h3>
                     <div className="space-y-2">
-                      {["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) && (
+                      {["Minor_Cheat", "Major_Cheat", "Extreme_Cheat"].includes(formData.formQuality) && (
                         <p className="text-orange-700">
                           <strong>惩罚重量：</strong> -{formData.penaltyWeight}kg
                         </p>
