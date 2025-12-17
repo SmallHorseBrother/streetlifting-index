@@ -224,7 +224,25 @@ export default function CalculatorPage() {
       default: return 1.0
     }
   }
-
+   // 计算 RM 表格的函数
+  const generateRMTable = (bw: number, external1rm: number) => {
+    const total1rm = bw + external1rm;
+    const repsList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16];
+    return repsList.map((r) => {
+      const factorEpley = (1 + 0.0333) / (1 + 0.0333 * r);
+      const factorBrzycki = (37 - r) / 36.0;
+      const factorLombardi = 1 / Math.pow(r, 0.10);
+      const avgFactor = (factorEpley + factorBrzycki + factorLombardi) / 3.0;
+      const sysWeight = total1rm * avgFactor;
+      const targetLoad = sysWeight - bw;
+      const percentage = external1rm > 0 ? (targetLoad / external1rm) * 100 : 0;
+      return {
+        reps: r,
+        weight: Math.round(targetLoad * 10) / 10,
+        percentage: Math.round(percentage),
+      };
+    });
+  };
   const intensityAvg = (reps: number) => {
     const r = Math.max(1, Math.min(36, Math.round(reps)))
     const e = 1 / (1 + 0.0333 * r)
@@ -257,13 +275,13 @@ export default function CalculatorPage() {
       return Math.max(1, Math.min(36, v))
     }
     const r1 = effReps(firstSet)
-    const rn = effReps(lastSet)
     let D_first: number | null = null
     let D_last: number | null = null
     if (r1 !== null) {
       const I1 = intensityAvg(r1)
       D_first = Tw / I1
     }
+    const rn = effReps(lastSet)
     if (rn !== null) {
       const In = intensityAvg(rn)
       D_last = Tw / (In * lastAvail)
@@ -597,7 +615,8 @@ export default function CalculatorPage() {
             <p className="text-gray-600">使用最新的社区数据生成的公式，计算您的引体向上力量指数</p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+
+          <div className="max-w-2xl mx-auto">
             {/* Calculator */}
             <Card>
               <CardHeader>
@@ -810,13 +829,15 @@ export default function CalculatorPage() {
                       <Input
                         id="reps"
                         type="number"
-                        placeholder="8"
+                        placeholder="5"
+                        min="1"
+                        max="10"
                         value={formData.reps}
                         onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
                         required
                       />
                       <p className="mt-2 text-sm text-muted-foreground">
-                        建议输入5次以内的次数，结果更准确。
+                        仅支持1-10次，建议5次以内。
                       </p>
                     </div>
                   )}
@@ -859,7 +880,9 @@ export default function CalculatorPage() {
                           <Input
                             id="reps_day"
                             type="number"
-                            placeholder="例如 5"
+                            placeholder="5"
+                            min="1"
+                            max="10"
                             value={formData.reps}
                             onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
                           />
@@ -1136,78 +1159,49 @@ export default function CalculatorPage() {
                           </p>
                         </div>
                       )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Current Formula Display */}
-            <Card>
-              <CardHeader>
-                <CardTitle>当前系数公式</CardTitle>
-                <CardDescription>基于社区数据生成的最新力量系数公式</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {currentFormula ? (
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">{formData.gender === "Male" ? "男性" : "女性"}系数公式</h4>
-                      <div className="bg-gray-50 p-3 rounded font-mono text-sm">
-                        C(W) = {currentFormula.coeff_a.toExponential(3)}×W⁵ + {currentFormula.coeff_b.toExponential(3)}
-                        ×W⁴ + {currentFormula.coeff_c.toExponential(3)}×W³ + {currentFormula.coeff_d.toExponential(3)}
-                        ×W² + {currentFormula.coeff_e.toExponential(3)}×W + {currentFormula.coeff_f.toFixed(3)}
+                      
+                      {/* RM 表格展示 */}
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-gray-800 mb-2">📊 RM 对照表</h4>
+                        <p className="text-xs text-gray-500 mb-2">
+                          基于您的{isUpperBodyExercise(exerciseType) ? '负重' : ''}1RM ({result.estimated_1rm.toFixed(1)} kg) 计算各次数对应的{isUpperBodyExercise(exerciseType) ? '负重' : '做组重量'}
+                        </p>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-sm border border-gray-200 rounded">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="px-3 py-2 border-b text-left">次数</th>
+                                <th className="px-3 py-2 border-b text-left">{isUpperBodyExercise(exerciseType) ? '负重 (kg)' : '重量 (kg)'}</th>
+                                <th className="px-3 py-2 border-b text-left">% 1RM</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {generateRMTable(
+                                isUpperBodyExercise(exerciseType) 
+                                  ? Number.parseFloat(formData.bodyweight) || 0
+                                  : 0, // 三大项不需要加体重
+                                // 对于上肢类，result.estimated_1rm 已经是外挂负重1RM，直接使用
+                                // 对于三大项，result.estimated_1rm 是杠铃1RM
+                                result.estimated_1rm
+                              ).map((row) => (
+                                <tr key={row.reps} className="hover:bg-gray-50">
+                                  <td className="px-3 py-1 border-b">{row.reps}</td>
+                                  <td className="px-3 py-1 border-b font-medium">{row.weight.toFixed(1)}</td>
+                                  <td className="px-3 py-1 border-b text-gray-600">{row.percentage}%</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>
-                        <strong>数据来源：</strong> {currentFormula.total_submissions_used} 条有效提交
-                      </p>
-                      <p>
-                        <strong>更新时间：</strong> {new Date(currentFormula.last_updated).toLocaleString("zh-CN")}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Info className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>请选择性别以查看对应的公式系数</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Data Visualization Placeholder */}
-          <div className="mt-12">
-            <Card>
-              <CardHeader>
-                <CardTitle>数据可视化</CardTitle>
-                <CardDescription>基于社区数据的分析图表</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="text-center">
-                    <h4 className="font-semibold mb-4">体重 vs 1RM总拉力分布图</h4>
-                    <div className="bg-gray-100 h-64 rounded-lg flex items-center justify-center">
-                      <p className="text-gray-500">图表将在数据足够时显示</p>
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <h4 className="font-semibold mb-4">性能包络线与力量系数曲线</h4>
-                    <div className="bg-gray-100 h-64 rounded-lg flex items-center justify-center">
-                      <p className="text-gray-500">图表将在数据足够时显示</p>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-
       {/* Donation Section */}
       <DonationSection variant="footer" />
     </div>

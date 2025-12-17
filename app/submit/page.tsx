@@ -51,8 +51,8 @@ export default function SubmissionPage() {
           penalty_weight: ["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0,
           user_name: formData.userName || null,
           video_url: formData.videoUrl || null,
-          pullup_type: formData.pullupType,
-          exercise_type: formData.exerciseType, // 新增
+          pullup_type: formData.exerciseType === "weighted_pullup" ? formData.pullupType : null,
+          exercise_type: formData.exerciseType,
         },
       ])
 
@@ -238,13 +238,15 @@ export default function SubmissionPage() {
                     <Input
                       id="reps"
                       type="number"
-                      placeholder="8"
+                      placeholder="5"
+                      min="1"
+                      max="10"
                       value={formData.reps}
                       onChange={(e) => setFormData({ ...formData, reps: e.target.value })}
                       required
                     />
                     <p className="mt-2 text-sm text-muted-foreground">
-                      建议输入5次以内的次数，这样提交的数据更有效。
+                      仅支持1-10次，建议5次以内。
                     </p>
                   </div>
                 </div>
@@ -267,21 +269,24 @@ export default function SubmissionPage() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="pullupType">引体向上类型</Label>
-                  <Select
-                    value={formData.pullupType}
-                    onValueChange={(value) => setFormData({ ...formData, pullupType: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择引体类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Overhand">正手负重引体</SelectItem>
-                      <SelectItem value="Underhand">反手负重引体</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* 只在选择负重引体时显示引体类型选择 */}
+                {formData.exerciseType === "weighted_pullup" && (
+                  <div>
+                    <Label htmlFor="pullupType">引体向上类型</Label>
+                    <Select
+                      value={formData.pullupType}
+                      onValueChange={(value) => setFormData({ ...formData, pullupType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择引体类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Overhand">正手负重引体</SelectItem>
+                        <SelectItem value="Underhand">反手负重引体</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div>
                   <Label htmlFor="userName">姓名/社媒账号 (选填)</Label>

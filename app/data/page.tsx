@@ -6,13 +6,23 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, ExternalLink, User, Video, Filter } from "lucide-react"
+import { TrendingUp, ExternalLink, User, Video, Filter, LayoutGrid, List, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { DonationSection } from "@/components/donation-section"
 import { MobileNav } from "@/components/ui/mobile-nav"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+interface FormulaCoefficients {
+  coeff_a: number
+  coeff_b: number
+  coeff_c: number
+  coeff_d: number
+  coeff_e: number
+  coeff_f: number
+}
 
 interface Submission {
   id: string
@@ -25,28 +35,34 @@ interface Submission {
   penalty_weight: number
   user_name: string | null
   video_url: string | null
-  pullup_type: "Overhand" | "Underhand"
+  pullup_type: "Overhand" | "Underhand" | null
+  exercise_type: "weighted_pullup" | "weighted_dips"
 }
 
 export default function DataPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
+  const [formulas, setFormulas] = useState<{ Male?: FormulaCoefficients; Female?: FormulaCoefficients }>({})
   const [filters, setFilters] = useState({
     gender: "all",
     pullupType: "all",
     formQuality: "all",
     hasVideo: "all",
     search: "",
+    exerciseType: "all",
   })
+  const [sortBy, setSortBy] = useState<"date" | "weight" | "score">("weight")
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 
   useEffect(() => {
     fetchSubmissions()
+    fetchFormulas()
   }, [])
 
   useEffect(() => {
-    applyFilters()
-  }, [submissions, filters])
+    applyFiltersAndSort()
+  }, [submissions, filters, sortBy, formulas])
 
   const fetchSubmissions = async () => {
     try {
@@ -61,13 +77,96 @@ export default function DataPage() {
     }
   }
 
-  const applyFilters = () => {
-    let filtered = submissions
+  const fetchFormulas = async () => {
+    try {
+      const { data, error } = await supabase.from("formulas").select("*")
+      if (error) throw error
+
+      const formulaMap: { Male?: FormulaCoefficients; Female?: FormulaCoefficients } = {}
+      data?.forEach((formula) => {
+        formulaMap[formula.gender as "Male" | "Female"] = formula
+      })
+      setFormulas(formulaMap)
+    } catch (err) {
+      console.error("Error fetching formulas:", err)
+    }
+  }
+
+  // 计算系数（枭马葛公式）
+  const computeCoefficient = (W: number, formula: FormulaCoefficients) => {
+    return (
+      formula.coeff_b * Math.pow(W, 4) +
+      formula.coeff_c * Math.pow(W, 3) +
+      formula.coeff_d * Math.pow(W, 2) +
+      formula.coeff_e * W +
+      formula.coeff_f
+    )
+  }
+
+  const calculate1RM = (bodyweight: number, addedWeight: number, reps: number, penaltyWeight: number) => {
+    const adjustedWeight = addedWeight - penaltyWeight
+    const totalWeight = bodyweight + adjustedWeight
+
+    if (reps === 1) {
+      return adjustedWeight
+    }
+
+    if (reps >= 37) {
+      return 0
+    }
+
+    const epley1RM = totalWeight * (1 + 0.0333 * reps)
+    const brzycki1RM = totalWeight * (36 / (37 - reps))
+    const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
+
+    const totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
+
+    return totalEstimated1RM - bodyweight
+  }
+
+  const calculateScore = (submission: Submission) => {
+    const formula = formulas[submission.gender]
+    if (!formula) return 0
+
+    const adjustedWeight = submission.added_weight - submission.penalty_weight
+    const totalWeight = submission.bodyweight + adjustedWeight
+    
+    let totalEstimated1RM: number
+    if (submission.reps === 1) {
+      totalEstimated1RM = totalWeight
+    } else if (submission.reps >= 37) {
+      return 0
+    } else {
+      const epley1RM = totalWeight * (1 + 0.0333 * submission.reps)
+      const brzycki1RM = totalWeight * (36 / (37 - submission.reps))
+      const lombardi1RM = totalWeight * Math.pow(submission.reps, 0.1)
+      totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
+    }
+
+    const coefficient = computeCoefficient(submission.bodyweight, formula)
+    let score = totalEstimated1RM * coefficient
+    
+    // 负重臂屈伸的力量分需要除以1.3
+    if (submission.exercise_type === "weighted_dips") {
+      score = score / 1.3
+    }
+    
+    return score
+  }
+
+  const applyFiltersAndSort = () => {
+    let filtered = [...submissions]
+
+    // 运动类型筛选
+    if (filters.exerciseType !== "all") {
+      filtered = filtered.filter((sub) => sub.exercise_type === filters.exerciseType)
+    }
 
     if (filters.gender !== "all") {
       filtered = filtered.filter((sub) => sub.gender === filters.gender)
     }
 
+    // 引体类型筛选（仅对负重引体有效）
     if (filters.pullupType !== "all") {
       filtered = filtered.filter((sub) => sub.pullup_type === filters.pullupType)
     }
@@ -86,6 +185,20 @@ export default function DataPage() {
 
     if (filters.search) {
       filtered = filtered.filter((sub) => sub.user_name?.toLowerCase().includes(filters.search.toLowerCase()))
+    }
+
+    // 排序
+    if (sortBy === "weight") {
+      filtered.sort((a, b) => {
+        const aRM = calculate1RM(a.bodyweight, a.added_weight, a.reps, a.penalty_weight)
+        const bRM = calculate1RM(b.bodyweight, b.added_weight, b.reps, b.penalty_weight)
+        return bRM - aRM
+      })
+    } else if (sortBy === "score") {
+      filtered.sort((a, b) => calculateScore(b) - calculateScore(a))
+    } else {
+      // 默认按时间排序
+      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
     setFilteredSubmissions(filtered)
@@ -121,30 +234,8 @@ export default function DataPage() {
     }
   }
 
-  const calculate1RM = (bodyweight: number, addedWeight: number, reps: number, penaltyWeight: number) => {
-    const adjustedWeight = addedWeight - penaltyWeight
-    const totalWeight = bodyweight + adjustedWeight
-
-    // If reps is 1, the total weight is already the 1RM
-    if (reps === 1) {
-      return adjustedWeight // 直接返回调整后的负重
-    }
-
-    // The Brzycki formula is undefined for reps >= 37
-    if (reps >= 37) {
-      return 0 // 或者返回一个错误信息
-    }
-
-    // Calculate 1RM using three different formulas
-    const epley1RM = totalWeight * (1 + 0.0333 * reps)
-    const brzycki1RM = totalWeight * (36 / (37 - reps))
-    const lombardi1RM = totalWeight * Math.pow(reps, 0.1)
-
-    // Average the results for a more accurate 1RM
-    const totalEstimated1RM = (epley1RM + brzycki1RM + lombardi1RM) / 3
-
-    // Return the 1RM for added weight (subtract bodyweight)
-    return totalEstimated1RM - bodyweight
+  const getExerciseTypeText = (type: string) => {
+    return type === "weighted_pullup" ? "负重引体" : "负重臂屈伸"
   }
 
   if (loading) {
@@ -203,19 +294,53 @@ export default function DataPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-4">社区数据展示</h1>
-            <p className="text-gray-600">查看社区成员分享的引体向上成绩和训练视频</p>
+            <p className="text-gray-600">查看社区成员分享的负重训练成绩和训练视频</p>
           </div>
 
           {/* Filters */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Filter className="h-5 w-5 mr-2" />
-                数据筛选
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center">
+                  <Filter className="h-5 w-5 mr-2" />
+                  数据筛选与排序
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={viewMode === "cards" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("cards")}
+                    className={viewMode === "cards" ? "" : "bg-transparent"}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "table" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                    className={viewMode === "table" ? "" : "bg-transparent"}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                {/* 运动类型筛选 */}
+                <div>
+                  <Select value={filters.exerciseType} onValueChange={(value) => setFilters({ ...filters, exerciseType: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="运动类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部运动</SelectItem>
+                      <SelectItem value="weighted_pullup">负重引体</SelectItem>
+                      <SelectItem value="weighted_dips">负重臂屈伸</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div>
                   <Select value={filters.gender} onValueChange={(value) => setFilters({ ...filters, gender: value })}>
                     <SelectTrigger>
@@ -279,7 +404,21 @@ export default function DataPage() {
                   </Select>
                 </div>
 
-                <div className="md:col-span-2 lg:col-span-3 xl:col-span-1">
+                {/* 排序选择 */}
+                <div>
+                  <Select value={sortBy} onValueChange={(value: "date" | "weight" | "score") => setSortBy(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="排序方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="date">按时间排序</SelectItem>
+                      <SelectItem value="weight">按绝对重量排序</SelectItem>
+                      <SelectItem value="score">按力量分排序</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2 lg:col-span-3 xl:col-span-6">
                   <Input
                     placeholder="搜索用户名..."
                     value={filters.search}
@@ -309,109 +448,215 @@ export default function DataPage() {
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  {filteredSubmissions.filter((s) => s.pullup_type === "Overhand").length}
+                  {filteredSubmissions.filter((s) => s.exercise_type === "weighted_pullup").length}
                 </div>
-                <p className="text-sm text-gray-600">正手引体</p>
+                <p className="text-sm text-gray-600">负重引体</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-orange-600">
-                  {filteredSubmissions.filter((s) => s.pullup_type === "Underhand").length}
+                  {filteredSubmissions.filter((s) => s.exercise_type === "weighted_dips").length}
                 </div>
-                <p className="text-sm text-gray-600">反手引体</p>
+                <p className="text-sm text-gray-600">负重臂屈伸</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Submissions Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSubmissions.map((submission) => {
-              const estimated1RM = calculate1RM(
-                submission.bodyweight,
-                submission.added_weight,
-                submission.reps,
-                submission.penalty_weight,
-              )
+          {/* Table View */}
+          {viewMode === "table" && filteredSubmissions.length > 0 && (
+            <Card className="mb-8">
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>用户</TableHead>
+                      <TableHead>运动类型</TableHead>
+                      <TableHead>性别</TableHead>
+                      <TableHead>体重</TableHead>
+                      <TableHead>负重</TableHead>
+                      <TableHead>次数</TableHead>
+                      <TableHead>估算1RM</TableHead>
+                      <TableHead>力量分</TableHead>
+                      <TableHead>动作质量</TableHead>
+                      <TableHead>视频</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSubmissions.map((submission, index) => {
+                      const estimated1RM = calculate1RM(
+                        submission.bodyweight,
+                        submission.added_weight,
+                        submission.reps,
+                        submission.penalty_weight,
+                      )
+                      const score = calculateScore(submission)
 
-              return (
-                <Card key={submission.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {submission.user_name ? (
-                          <div className="flex items-center">
-                            <User className="h-4 w-4 text-gray-500 mr-1" />
-                            <span className="font-medium text-sm">{submission.user_name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">匿名用户</span>
-                        )}
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={submission.gender === "Male" ? "text-blue-600" : "text-pink-600"}
-                      >
-                        {submission.gender === "Male" ? "男" : "女"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Badge className={getQualityColor(submission.form_quality)}>
-                        {getQualityText(submission.form_quality)}
-                      </Badge>
-                      <Badge variant="outline">{submission.pullup_type === "Overhand" ? "正手" : "反手"}</Badge>
-                    </div>
-                  </CardHeader>
+                      return (
+                        <TableRow key={submission.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {submission.user_name ? (
+                                <>
+                                  <User className="h-4 w-4 text-gray-500 mr-1" />
+                                  <span className="text-sm">{submission.user_name}</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-500">匿名</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={submission.exercise_type === "weighted_pullup" ? "text-blue-600" : "text-orange-600"}>
+                              {getExerciseTypeText(submission.exercise_type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={submission.gender === "Male" ? "text-blue-600" : "text-pink-600"}
+                            >
+                              {submission.gender === "Male" ? "男" : "女"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{submission.bodyweight}kg</TableCell>
+                          <TableCell>{submission.added_weight}kg</TableCell>
+                          <TableCell>{submission.reps}次</TableCell>
+                          <TableCell className="font-medium">{estimated1RM.toFixed(1)}kg</TableCell>
+                          <TableCell className="font-medium text-blue-600">{score.toFixed(1)}</TableCell>
+                          <TableCell>
+                            <Badge className={getQualityColor(submission.form_quality)}>
+                              {getQualityText(submission.form_quality)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {submission.video_url ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open(submission.video_url!, "_blank")}
+                              >
+                                <Video className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">体重:</span>
-                        <span className="ml-1 font-medium">{submission.bodyweight}kg</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">负重:</span>
-                        <span className="ml-1 font-medium">{submission.added_weight}kg</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">次数:</span>
-                        <span className="ml-1 font-medium">{submission.reps}次</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">估算1RM:</span>
-                        <span className="ml-1 font-medium">{estimated1RM.toFixed(1)}kg</span>
-                      </div>
-                    </div>
+          {/* Cards View */}
+          {viewMode === "cards" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSubmissions.map((submission) => {
+                const estimated1RM = calculate1RM(
+                  submission.bodyweight,
+                  submission.added_weight,
+                  submission.reps,
+                  submission.penalty_weight,
+                )
+                const score = calculateScore(submission)
 
-                    {submission.penalty_weight > 0 && (
-                      <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                        惩罚重量: -{submission.penalty_weight}kg
-                      </div>
-                    )}
-
-                    {submission.video_url && (
-                      <div className="pt-2">
-                        <Button
+                return (
+                  <Card key={submission.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {submission.user_name ? (
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 text-gray-500 mr-1" />
+                              <span className="font-medium text-sm">{submission.user_name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-500">匿名用户</span>
+                          )}
+                        </div>
+                        <Badge
                           variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent"
-                          onClick={() => window.open(submission.video_url!, "_blank")}
+                          className={submission.gender === "Male" ? "text-blue-600" : "text-pink-600"}
                         >
-                          <Video className="h-4 w-4 mr-2" />
-                          观看训练视频
-                          <ExternalLink className="h-3 w-3 ml-2" />
-                        </Button>
+                          {submission.gender === "Male" ? "男" : "女"}
+                        </Badge>
                       </div>
-                    )}
+                      <div className="flex items-center justify-between">
+                        <Badge className={getQualityColor(submission.form_quality)}>
+                          {getQualityText(submission.form_quality)}
+                        </Badge>
+                        <div className="flex gap-1">
+                          <Badge variant="outline" className={submission.exercise_type === "weighted_pullup" ? "text-blue-600" : "text-orange-600"}>
+                            {getExerciseTypeText(submission.exercise_type)}
+                          </Badge>
+                          {submission.exercise_type === "weighted_pullup" && submission.pullup_type && (
+                            <Badge variant="outline">{submission.pullup_type === "Overhand" ? "正手" : "反手"}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
 
-                    <div className="text-xs text-gray-500 pt-2 border-t">
-                      提交时间: {new Date(submission.created_at).toLocaleDateString("zh-CN")}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">体重:</span>
+                          <span className="ml-1 font-medium">{submission.bodyweight}kg</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">负重:</span>
+                          <span className="ml-1 font-medium">{submission.added_weight}kg</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">次数:</span>
+                          <span className="ml-1 font-medium">{submission.reps}次</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">估算1RM:</span>
+                          <span className="ml-1 font-medium">{estimated1RM.toFixed(1)}kg</span>
+                        </div>
+                      </div>
+
+                      {/* 力量分显示 */}
+                      <div className="bg-blue-50 p-2 rounded text-center">
+                        <span className="text-gray-500 text-sm">力量分: </span>
+                        <span className="font-bold text-blue-600">{score.toFixed(1)}</span>
+                      </div>
+
+                      {submission.penalty_weight > 0 && (
+                        <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                          惩罚重量: -{submission.penalty_weight}kg
+                        </div>
+                      )}
+
+                      {submission.video_url && (
+                        <div className="pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-transparent"
+                            onClick={() => window.open(submission.video_url!, "_blank")}
+                          >
+                            <Video className="h-4 w-4 mr-2" />
+                            观看训练视频
+                            <ExternalLink className="h-3 w-3 ml-2" />
+                          </Button>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-gray-500 pt-2 border-t">
+                        提交时间: {new Date(submission.created_at).toLocaleDateString("zh-CN")}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
 
           {filteredSubmissions.length === 0 && (
             <div className="text-center py-12">
@@ -422,7 +667,7 @@ export default function DataPage() {
               <Button
                 variant="outline"
                 className="mt-4 bg-transparent"
-                onClick={() => setFilters({ gender: "all", pullupType: "all", formQuality: "all", hasVideo: "all", search: "" })}
+                onClick={() => setFilters({ gender: "all", pullupType: "all", formQuality: "all", hasVideo: "all", search: "", exerciseType: "all" })}
               >
                 清除筛选条件
               </Button>
