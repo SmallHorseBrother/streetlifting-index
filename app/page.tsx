@@ -58,14 +58,13 @@ export default function HomePage() {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <TrendingUp className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">引体向上力量系数</span>
+              <span className="ml-2 text-xl font-bold text-gray-900">街健力量指数</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/" className="text-gray-900 hover:text-blue-600">首页</Link>
               <Link href="/calculator" className="text-gray-700 hover:text-blue-600">力量计算器</Link>
               <Link href="/submit" className="text-gray-700 hover:text-blue-600">数据提交</Link>
               <Link href="/data" className="text-gray-700 hover:text-blue-600">社区数据</Link>
-              <Link href="/methodology" className="text-gray-700 hover:text-blue-600">方法论</Link>
               <Link href="/stories" className="text-gray-700 hover:text-blue-600">街头健身故事会</Link>
             </div>
             <div className="flex items-center md:hidden">
@@ -78,9 +77,9 @@ export default function HomePage() {
       {/* Hero Section with Prominent CTAs */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold mb-6">世界首创的引体向上力量系数</h1>
+          <h1 className="text-5xl font-bold mb-6">世界首创的街健力量系数</h1>
           <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">
-            由<span className="font-semibold">枭马葛</span>创建的科学评估体系，为不同体重的训练者提供公平、透明的力量评估标准。
+            由<span className="font-semibold">枭马葛</span>创建的科学评估体系，支持引体向上、臂屈伸等动作，为不同体重的训练者提供公平、透明的力量评估标准。
           </p>
           
           {/* Primary CTAs */}
@@ -145,7 +144,7 @@ export default function HomePage() {
                 <CardTitle className="text-xl text-green-700">力量计算器</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <p className="text-gray-600 mb-4">快速计算你的引体向上力量分数，评估训练水平</p>
+                <p className="text-gray-600 mb-4">快速计算你的力量分数，评估训练水平</p>
                 <Link href="/calculator">
                   <Button className="w-full bg-green-600 hover:bg-green-700">
                     开始计算
@@ -177,24 +176,17 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            {/* Formula Status Card */}
+            {/* Community Data Card */}
             <Card className="bg-white shadow-xl transform hover:-translate-y-1 transition-all duration-300">
               <CardHeader className="text-center pb-4">
                 <TrendingUp className="h-12 w-12 text-purple-600 mx-auto mb-2" />
-                <CardTitle className="text-xl text-purple-700">公式状态</CardTitle>
-                {stats.loading ? (
-                  <div className="text-lg font-semibold text-purple-600">加载中...</div>
-                ) : (
-                  <div className="text-lg font-semibold text-purple-600">
-                    {stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleDateString("zh-CN") : "待更新"}
-                  </div>
-                )}
-                <p className="text-sm text-gray-500">最近更新时间</p>
+                <CardTitle className="text-xl text-purple-700">社区数据</CardTitle>
+                <p className="text-sm text-gray-500">查看社区成员的训练成绩</p>
               </CardHeader>
               <CardContent className="text-center">
-                <Link href="/methodology">
+                <Link href="/data">
                   <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                    了解原理
+                    查看排行榜
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -216,10 +208,10 @@ export default function HomePage() {
                 <div>
                   <h3 className="text-lg font-semibold mb-3">项目目标</h3>
                   <ul className="space-y-2 text-gray-600">
-                    <li>• 建立透明、科学的引体向上力量评估标准</li>
+                    <li>• 建立透明、科学的街健力量评估标准</li>
                     <li>• 通过社区数据驱动，持续优化评估公式</li>
                     <li>• 为不同体重的训练者提供公平的力量对比</li>
-                    <li>• 推动引体向上训练的科学化发展</li>
+                    <li>• 推动街头健身训练的科学化发展</li>
                   </ul>
                 </div>
                 <div>
@@ -260,7 +252,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center mb-4">
             <TrendingUp className="h-8 w-8 text-blue-400" />
-            <span className="ml-2 text-xl font-bold">引体向上力量系数</span>
+            <span className="ml-2 text-xl font-bold">街健力量指数</span>
           </div>
           <p className="text-gray-400">© 2024 Pull-up Strength Coefficient. 开源项目，社区驱动。</p>
         </div>

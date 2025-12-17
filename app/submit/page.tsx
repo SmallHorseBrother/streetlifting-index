@@ -100,7 +100,7 @@ export default function SubmissionPage() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
                 <TrendingUp className="h-8 w-8 text-blue-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">引体向上力量指数</span>
+                <span className="ml-2 text-xl font-bold text-gray-900">街健力量指数</span>
               </Link>
             </div>
             {/* Desktop Navigation */}
@@ -116,9 +116,6 @@ export default function SubmissionPage() {
               </Link>
               <Link href="/data" className="text-gray-700 hover:text-blue-600">
                 社区数据
-              </Link>
-              <Link href="/methodology" className="text-gray-700 hover:text-blue-600">
-                方法论
               </Link>
               <Link href="/stories" className="text-gray-700 hover:text-blue-600">
                 街头健身故事会
