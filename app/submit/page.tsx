@@ -26,9 +26,10 @@ export default function SubmissionPage() {
     reps: "",
     formQuality: "",
     penaltyWeight: 3,
-    userName: "", // 新增
-    videoUrl: "", // 新增
-    pullupType: "", // 新增
+    userName: "",
+    videoUrl: "",
+    pullupType: "",
+    exerciseType: "weighted_pullup", // 新增：运动类型
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
@@ -48,9 +49,10 @@ export default function SubmissionPage() {
           reps: Number.parseInt(formData.reps),
           form_quality: formData.formQuality,
           penalty_weight: ["Minor_Cheat", "Major_Cheat"].includes(formData.formQuality) ? formData.penaltyWeight : 0,
-          user_name: formData.userName || null, // 新增
-          video_url: formData.videoUrl || null, // 新增
-          pullup_type: formData.pullupType, // 新增
+          user_name: formData.userName || null,
+          video_url: formData.videoUrl || null,
+          pullup_type: formData.pullupType,
+          exercise_type: formData.exerciseType, // 新增
         },
       ])
 
@@ -68,9 +70,10 @@ export default function SubmissionPage() {
         reps: "",
         formQuality: "",
         penaltyWeight: 3,
-        userName: "", // 新增
-        videoUrl: "", // 新增
-        pullupType: "", // 新增
+        userName: "",
+        videoUrl: "",
+        pullupType: "",
+        exerciseType: "weighted_pullup",
       })
     } catch (err) {
       setError("提交失败，请稍后重试")
@@ -163,11 +166,28 @@ export default function SubmissionPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>引体向上数据表单</CardTitle>
-              <CardDescription>请如实填写您的引体向上成绩数据</CardDescription>
+              <CardTitle>负重训练数据表单</CardTitle>
+              <CardDescription>请如实填写您的负重训练成绩数据</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* 运动类型选择 */}
+                <div>
+                  <Label htmlFor="exerciseType">运动类型</Label>
+                  <Select
+                    value={formData.exerciseType}
+                    onValueChange={(value) => setFormData({ ...formData, exerciseType: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择运动类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weighted_pullup">💪 负重引体向上</SelectItem>
+                      <SelectItem value="weighted_dips">💪 负重双杠臂屈伸</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="gender">性别</Label>

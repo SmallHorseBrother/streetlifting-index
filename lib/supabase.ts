@@ -21,6 +21,7 @@ export type Database = {
           user_name: string | null
           video_url: string | null
           pullup_type: "Overhand" | "Underhand"
+          exercise_type: "weighted_pullup" | "weighted_dips"
           is_processed: boolean
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           user_name?: string | null
           video_url?: string | null
           pullup_type: "Overhand" | "Underhand"
+          exercise_type?: "weighted_pullup" | "weighted_dips"
           is_processed?: boolean
         }
         Update: {
@@ -49,6 +51,7 @@ export type Database = {
           user_name?: string | null
           video_url?: string | null
           pullup_type?: "Overhand" | "Underhand"
+          exercise_type?: "weighted_pullup" | "weighted_dips"
           is_processed?: boolean
         }
       }
