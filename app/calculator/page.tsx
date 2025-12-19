@@ -41,13 +41,24 @@ type CalcResult = {
 }
 
 // 运动类型定义
-type ExerciseType = 'weighted_pullup' | 'weighted_dips' | 'squat' | 'bench' | 'deadlift'
+type ExerciseType = 'weighted_pullup' | 'weighted_dips' | 'squat' | 'bench' | 'deadlift' | 'strict_press' | 'barbell_curl'
 
-// 判断是否为上肢类运动（使用枭马葛公式）
+// 判断是否为上肢类运动（使用枭马葛公式）- 自重+负重类
 const isUpperBodyExercise = (type: ExerciseType) => ['weighted_pullup', 'weighted_dips'].includes(type)
 
 // 判断是否为力量三项（使用DOTS系数）
 const isPowerliftingExercise = (type: ExerciseType) => ['squat', 'bench', 'deadlift'].includes(type)
+
+// 判断是否为基于卧推换算的运动（使用DOTS系数 + 换算因子，满分500）
+const isBenchBasedExercise = (type: ExerciseType) => ['strict_press', 'barbell_curl'].includes(type)
+
+// 实力推换算系数：实力推约为卧推的65%，换算后满分500
+// 卧推世界级约130 DOTS，实力推换算分 = DOTS分 / 0.65 * (500/130) ≈ DOTS * 5.92
+const STRICT_PRESS_MULTIPLIER = 500 / (130 * 0.65) // ≈ 5.92
+
+// 杠铃弯举换算系数：弯举约为卧推的50%，换算后满分500  
+// 弯举换算分 = DOTS分 / 0.50 * (500/130) ≈ DOTS * 7.69
+const BARBELL_CURL_MULTIPLIER = 500 / (130 * 0.50) // ≈ 7.69
 
 // DOTS 系数计算函数 - 用于深蹲、卧推、硬拉
 // 公式: DOTS = 500 / (A*x^4 + B*x^3 + C*x^2 + D*x + E)
@@ -92,7 +103,7 @@ const getScoreLevel = (score: number, exerciseType: ExerciseType): { level: stri
     }
   }
   
-  // 引体/臂屈伸等级 (满分500)
+  // 实力推/杠铃弯举/引体/臂屈伸等级 (满分500)
   if (score >= 500) return { level: "🏆 世界级", color: "text-purple-600" }
   if (score >= 450) return { level: "🥇 国内顶级", color: "text-yellow-600" }
   if (score >= 400) return { level: "💪 大佬", color: "text-blue-600" }
@@ -436,6 +447,110 @@ export default function CalculatorPage() {
         }
       }
 
+      // ==== 实力推/杠铃弯举计算 (使用DOTS系数 + 换算因子，满分500) ====
+      if (isBenchBasedExercise(exerciseType)) {
+        const dotsCoefficient = computeDOTSCoefficient(bodyweight, isMale)
+        const multiplier = exerciseType === 'strict_press' ? STRICT_PRESS_MULTIPLIER : BARBELL_CURL_MULTIPLIER
+        
+        if (mode === "forward") {
+          // 正向计算：从做组重量和次数计算1RM和力量分
+          const liftWeight = Number.parseFloat(formData.liftWeight)
+          const reps = Number.parseInt(formData.reps)
+          
+          if (!Number.isFinite(liftWeight) || liftWeight <= 0) {
+            throw new Error("请填写有效的做组重量")
+          }
+          if (!Number.isFinite(reps) || reps <= 0) {
+            throw new Error("请填写有效的完成次数")
+          }
+          
+          // 扣除惩罚重量
+          const adjustedWeight = liftWeight - penalty_weight
+          if (adjustedWeight <= 0) {
+            throw new Error("惩罚重量过高，调整后的重量必须大于0")
+          }
+          
+          // 使用三公式平均法估算1RM
+          const estimated1RM = estimateTotal1RMFromTotalWeightAndReps(adjustedWeight, reps)
+          // 先计算DOTS分，再乘以换算系数得到满分500的力量分
+          const dotsScore = estimated1RM * dotsCoefficient
+          const finalScore = dotsScore * multiplier
+          
+          setResult({
+            estimated_1rm: estimated1RM,
+            final_score: finalScore,
+            coefficient: dotsCoefficient,
+            total_1rm: estimated1RM,
+            adjusted_added_weight: penalty_weight > 0 ? adjustedWeight : undefined,
+          })
+          return
+        }
+        
+        if (mode === "reverse_weight") {
+          // 反推做组重量：从目标1RM和次数计算做组重量
+          const target1RM = Number.parseFloat(formData.target1RM)
+          const reps = Number.parseInt(formData.reps)
+          
+          if (!Number.isFinite(target1RM) || target1RM <= 0) {
+            throw new Error("请填写有效的目标1RM")
+          }
+          if (!Number.isFinite(reps) || reps <= 0) {
+            throw new Error("请填写有效的完成次数")
+          }
+          
+          const epleyWeight = target1RM / (1 + 0.0333 * reps)
+          const brzyckiWeight = target1RM * (37 - reps) / 36
+          const lombardiWeight = target1RM / Math.pow(reps, 0.1)
+          const computedWeight = (epleyWeight + brzyckiWeight + lombardiWeight) / 3
+          
+          const dotsScore = target1RM * dotsCoefficient
+          const finalScore = dotsScore * multiplier
+          
+          setResult({
+            estimated_1rm: target1RM,
+            final_score: finalScore,
+            coefficient: dotsCoefficient,
+            computed_added_weight: computedWeight,
+            total_1rm: target1RM,
+          })
+          return
+        }
+        
+        if (mode === "reverse_reps") {
+          // 反推次数：从目标1RM和做组重量计算可完成次数
+          const target1RM = Number.parseFloat(formData.target1RM)
+          const workingWeight = Number.parseFloat(formData.workingLiftWeight)
+          
+          if (!Number.isFinite(target1RM) || target1RM <= 0) {
+            throw new Error("请填写有效的目标1RM")
+          }
+          if (!Number.isFinite(workingWeight) || workingWeight <= 0) {
+            throw new Error("请填写有效的做组重量")
+          }
+          if (workingWeight >= target1RM) {
+            throw new Error("做组重量必须小于1RM")
+          }
+          
+          const epleyReps = (target1RM / workingWeight - 1) / 0.0333
+          const brzyckiReps = 37 - 36 * workingWeight / target1RM
+          const lombardiReps = Math.pow(target1RM / workingWeight, 10)
+          
+          const computedReps = Math.max(1, (epleyReps + brzyckiReps + lombardiReps) / 3)
+          const dotsScore = target1RM * dotsCoefficient
+          const finalScore = dotsScore * multiplier
+          
+          setResult({
+            estimated_1rm: target1RM,
+            final_score: finalScore,
+            coefficient: dotsCoefficient,
+            computed_reps: computedReps,
+            adjusted_added_weight: workingWeight,
+            total_1rm: target1RM,
+          })
+          return
+        }
+      }
+
       // ==== 上肢类计算 (使用枭马葛公式) ====
       // Get formula coefficients for the specified gender
       const { data: formula, error: formulaError } = await supabase
@@ -646,6 +761,8 @@ export default function CalculatorPage() {
                       <SelectContent>
                         <SelectItem value="weighted_pullup">💪 负重引体向上</SelectItem>
                         <SelectItem value="weighted_dips">💪 负重双杠臂屈伸</SelectItem>
+                        <SelectItem value="strict_press">🏋️ 实力推 (满分500)</SelectItem>
+                        <SelectItem value="barbell_curl">🏋️ 杠铃弯举 (满分500)</SelectItem>
                         <SelectItem value="squat">🏋️ 深蹲 (DOTS)</SelectItem>
                         <SelectItem value="bench">🏋️ 卧推 (DOTS)</SelectItem>
                         <SelectItem value="deadlift">🏋️ 硬拉 (DOTS)</SelectItem>
@@ -654,6 +771,8 @@ export default function CalculatorPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isUpperBodyExercise(exerciseType) 
                         ? "使用枭马葛公式计算力量分（满分500分）"
+                        : isBenchBasedExercise(exerciseType)
+                        ? "基于卧推DOTS公式换算（满分500分）"
                         : "使用国际标准 DOTS 公式计算力量分"
                       }
                     </p>
@@ -729,8 +848,8 @@ export default function CalculatorPage() {
                       </div>
                     )}
 
-                    {/* 三大项：根据模式显示不同输入 */}
-                    {isPowerliftingExercise(exerciseType) && mode === "forward" && (
+                    {/* 三大项/实力推/弯举：根据模式显示不同输入 */}
+                    {(isPowerliftingExercise(exerciseType) || isBenchBasedExercise(exerciseType)) && mode === "forward" && (
                       <div>
                         <Label htmlFor="liftWeight">做组重量 (kg)</Label>
                         <Input
@@ -745,7 +864,7 @@ export default function CalculatorPage() {
                       </div>
                     )}
 
-                    {isPowerliftingExercise(exerciseType) && mode === "reverse_weight" && (
+                    {(isPowerliftingExercise(exerciseType) || isBenchBasedExercise(exerciseType)) && mode === "reverse_weight" && (
                       <div>
                         <Label htmlFor="target1RM">目标1RM (kg)</Label>
                         <Input
@@ -763,7 +882,7 @@ export default function CalculatorPage() {
                       </div>
                     )}
 
-                    {isPowerliftingExercise(exerciseType) && mode === "reverse_reps" && (
+                    {(isPowerliftingExercise(exerciseType) || isBenchBasedExercise(exerciseType)) && mode === "reverse_reps" && (
                       <>
                         <div>
                           <Label htmlFor="target1RM">目标1RM (kg)</Label>
@@ -1097,6 +1216,61 @@ export default function CalculatorPage() {
                           <div className="mt-3 p-3 bg-blue-100 rounded-lg">
                             <p className="text-2xl font-bold text-blue-800">
                               DOTS 分数：{result.final_score.toFixed(1)} 分
+                            </p>
+                            <p className={`mt-1 font-semibold ${getScoreLevel(result.final_score, exerciseType).color}`}>
+                              {getScoreLevel(result.final_score, exerciseType).level}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* 实力推/杠铃弯举的结果显示 - 根据模式显示不同内容 */}
+                      {isBenchBasedExercise(exerciseType) && (
+                        <>
+                          {/* 正向计算结果 */}
+                          {mode === "forward" && (
+                            <>
+                              {["Minor_Cheat", "Major_Cheat", "Extreme_Cheat"].includes(formData.formQuality) && (
+                                <p className="text-green-700">
+                                  <strong>实际用于计算的重量：</strong> {(Number.parseFloat(formData.liftWeight) - formData.penaltyWeight).toFixed(1)} kg
+                                </p>
+                              )}
+                              <p className="text-green-700">
+                                <strong>估算1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                              </p>
+                            </>
+                          )}
+                          
+                          {/* 反推做组重量结果 */}
+                          {mode === "reverse_weight" && (
+                            <>
+                              <p className="text-green-700">
+                                <strong>目标1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                              </p>
+                              <p className="text-green-700">
+                                <strong>完成 {formData.reps} 次所需做组重量：</strong> {result.computed_added_weight?.toFixed(1)} kg
+                              </p>
+                            </>
+                          )}
+                          
+                          {/* 反推次数结果 */}
+                          {mode === "reverse_reps" && (
+                            <>
+                              <p className="text-green-700">
+                                <strong>目标1RM：</strong> {result.estimated_1rm.toFixed(1)} kg
+                              </p>
+                              <p className="text-green-700">
+                                <strong>做组重量：</strong> {result.adjusted_added_weight?.toFixed(1)} kg
+                              </p>
+                              <p className="text-green-700">
+                                <strong>可完成次数：</strong> {result.computed_reps?.toFixed(1)} 次
+                              </p>
+                            </>
+                          )}
+                          
+                          <div className="mt-3 p-3 bg-indigo-100 rounded-lg">
+                            <p className="text-2xl font-bold text-indigo-800">
+                              力量分：{result.final_score.toFixed(0)} / 500 分
                             </p>
                             <p className={`mt-1 font-semibold ${getScoreLevel(result.final_score, exerciseType).color}`}>
                               {getScoreLevel(result.final_score, exerciseType).level}
