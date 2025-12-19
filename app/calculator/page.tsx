@@ -461,7 +461,9 @@ export default function CalculatorPage() {
         const totalEstimated1RM = estimateTotal1RMFromTotalWeightAndReps(totalWeight, reps)
         const estimated1RM_added_weight = totalEstimated1RM - bodyweight
         const coefficient = computeCoefficient(bodyweight, formula)
-        const finalScore = totalEstimated1RM * coefficient
+        // 负重臂屈伸的力量分需要除以1.4
+        const rawScore = totalEstimated1RM * coefficient
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
         setResult({
           estimated_1rm: estimated1RM_added_weight,
           final_score: finalScore,
@@ -486,7 +488,9 @@ export default function CalculatorPage() {
         }
         const added_weight = adjusted_added_weight + penalty_weight
         const coefficient = computeCoefficient(bodyweight, formula)
-        const finalScore = targetTotal1RM * coefficient
+        // 负重臂屈伸的力量分需要除以1.4
+        const rawScore = targetTotal1RM * coefficient
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,
@@ -509,7 +513,9 @@ export default function CalculatorPage() {
         }
         const repsContinuous = estimateRepsForTarget1RMContinuous(targetTotal1RM, totalWorkingWeight)
         const coefficient = computeCoefficient(bodyweight, formula)
-        const finalScore = targetTotal1RM * coefficient
+        // 负重臂屈伸的力量分需要除以1.4
+        const rawScore = targetTotal1RM * coefficient
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,
@@ -549,7 +555,9 @@ export default function CalculatorPage() {
         })
 
         const coefficient = computeCoefficient(bodyweight, formula)
-        const finalScore = total1RM * coefficient
+        // 负重臂屈伸的力量分需要除以1.4
+        const rawScore = total1RM * coefficient
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,

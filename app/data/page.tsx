@@ -146,9 +146,9 @@ export default function DataPage() {
     const coefficient = computeCoefficient(submission.bodyweight, formula)
     let score = totalEstimated1RM * coefficient
     
-    // 负重臂屈伸的力量分需要除以1.3
+    // 负重臂屈伸的力量分需要除以1.4（臂屈伸相对引体更容易做大重量）
     if (submission.exercise_type === "weighted_dips") {
-      score = score / 1.3
+      score = score / 1.4
     }
     
     return score
