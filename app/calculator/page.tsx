@@ -463,7 +463,7 @@ export default function CalculatorPage() {
         const coefficient = computeCoefficient(bodyweight, formula)
         // 负重臂屈伸的力量分需要除以1.4
         const rawScore = totalEstimated1RM * coefficient
-        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.3 : rawScore
         setResult({
           estimated_1rm: estimated1RM_added_weight,
           final_score: finalScore,
@@ -490,7 +490,7 @@ export default function CalculatorPage() {
         const coefficient = computeCoefficient(bodyweight, formula)
         // 负重臂屈伸的力量分需要除以1.4
         const rawScore = targetTotal1RM * coefficient
-        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.3 : rawScore
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,
@@ -515,7 +515,7 @@ export default function CalculatorPage() {
         const coefficient = computeCoefficient(bodyweight, formula)
         // 负重臂屈伸的力量分需要除以1.4
         const rawScore = targetTotal1RM * coefficient
-        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.3 : rawScore
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,
@@ -557,7 +557,7 @@ export default function CalculatorPage() {
         const coefficient = computeCoefficient(bodyweight, formula)
         // 负重臂屈伸的力量分需要除以1.4
         const rawScore = total1RM * coefficient
-        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.4 : rawScore
+        const finalScore = exerciseType === 'weighted_dips' ? rawScore / 1.3 : rawScore
         setResult({
           estimated_1rm: added1RM,
           final_score: finalScore,
