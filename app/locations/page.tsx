@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { MapPin, Plus, Upload, Image as ImageIcon, Building2 } from "lucide-react"
+import { MapPin, Plus, Upload, Image as ImageIcon, Building2, Share2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -194,6 +194,24 @@ export default function LocationsPage() {
       image_url: "",
     })
     setImagePreview(null)
+  }
+
+  function handleShare(location: Location) {
+    const locationUrl = `${window.location.origin}/locations`
+    const addressPart = [location.province, location.city, location.address]
+      .filter(Boolean)
+      .join(" ")
+    
+    const shareText = `🏋️ 发现单杠训练点：${location.name}\n📍 地址：${addressPart || "暂无详细地址"}\n${location.description ? `💬 描述：${location.description}\n` : ""}🔗 查看更多单杠位置：${locationUrl}`
+    
+    navigator.clipboard.writeText(shareText).then(
+      () => {
+        alert("分享内容已复制到剪贴板！")
+      },
+      () => {
+        alert("复制失败，请手动复制")
+      }
+    )
   }
 
   return (
@@ -415,9 +433,20 @@ export default function LocationsPage() {
                     </div>
                   )}
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-green-600" />
-                      {location.name}
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-green-600" />
+                        {location.name}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleShare(location)}
+                        className="h-8 w-8 p-0"
+                        title="分享此地点"
+                      >
+                        <Share2 className="h-4 w-4 text-gray-500 hover:text-green-600" />
+                      </Button>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
