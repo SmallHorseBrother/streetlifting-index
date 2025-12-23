@@ -14,7 +14,7 @@ import { TrendingUp, Calculator, Info, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { DonationSection } from "@/components/donation-section"
-import { MobileNav } from "@/components/ui/mobile-nav"
+import { SiteHeader } from "@/components/SiteHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
@@ -692,41 +692,7 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-blue-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">街健力量指数</span>
-              </Link>
-            </div>
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-700 hover:text-blue-600">
-                首页
-              </Link>
-              <Link href="/submit" className="text-gray-700 hover:text-blue-600">
-                数据提交
-              </Link>
-              <Link href="/calculator" className="text-gray-900 hover:text-blue-600">
-                公式计算器
-              </Link>
-              <Link href="/data" className="text-gray-700 hover:text-blue-600">
-                社区数据
-              </Link>
-              <Link href="/stories" className="text-gray-700 hover:text-blue-600">
-                街头健身故事会
-              </Link>
-            </div>
-            {/* Mobile Navigation */}
-            <div className="flex items-center md:hidden">
-              <MobileNav />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader currentPage="calculator" />
 
       <div className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">

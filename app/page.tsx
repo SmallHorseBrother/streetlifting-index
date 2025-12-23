@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, Users, Calculator, BookOpen, ArrowRight } from "lucide-react"
+import { TrendingUp, Users, Calculator, BookOpen, ArrowRight, MapPin } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@supabase/supabase-js"
 import { RecentSubmissions } from "@/components/recent-submissions"
 import { DonationSection } from "@/components/donation-section"
-import { MobileNav } from "@/components/ui/mobile-nav"
+import { SiteHeader } from "@/components/SiteHeader"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -52,27 +52,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">街健力量指数</span>
-            </div>
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-900 hover:text-blue-600">首页</Link>
-              <Link href="/calculator" className="text-gray-700 hover:text-blue-600">力量计算器</Link>
-              <Link href="/submit" className="text-gray-700 hover:text-blue-600">数据提交</Link>
-              <Link href="/data" className="text-gray-700 hover:text-blue-600">社区数据</Link>
-              <Link href="/stories" className="text-gray-700 hover:text-blue-600">街头健身故事会</Link>
-            </div>
-            <div className="flex items-center md:hidden">
-              <MobileNav />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader currentPage="home" />
 
       {/* Hero Section with Prominent CTAs */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
@@ -96,11 +76,10 @@ export default function HomePage() {
                 贡献我的数据
               </Button>
             </Link>
-            <Link href="/stories">
-              <Button size="lg" className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-6 text-lg flex items-center justify-center font-bold">
-                <span className="text-yellow-300 mr-2">🆕</span>
-                最新故事：刘金峰和肖林
-                <ArrowRight className="ml-2 h-4 w-4" />
+            <Link href="/locations">
+              <Button size="lg" className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-6 text-lg flex items-center justify-center">
+                <MapPin className="mr-2 h-6 w-6" />
+                寻找单杠
               </Button>
             </Link>
           </div>

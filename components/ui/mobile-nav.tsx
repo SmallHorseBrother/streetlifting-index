@@ -27,7 +27,10 @@ export function MobileNav() {
             社区数据
           </Link>
           <Link href="/stories" className="text-lg font-medium hover:text-blue-600 transition-colors">
-            街头健身故事会
+            社区故事
+          </Link>
+          <Link href="/locations" className="text-lg font-medium hover:text-blue-600 transition-colors">
+            寻找单杠
           </Link>
         </nav>
       </SheetContent>
