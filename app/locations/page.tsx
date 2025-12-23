@@ -36,12 +36,15 @@ type Location = {
 
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([])
+  const [filteredLocations, setFilteredLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterProvince, setFilterProvince] = useState("all")
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -54,6 +57,30 @@ export default function LocationsPage() {
   useEffect(() => {
     fetchLocations()
   }, [])
+
+  // Filter locations based on search query and province filter
+  useEffect(() => {
+    let filtered = [...locations]
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter((loc) =>
+        loc.name.toLowerCase().includes(query) ||
+        loc.province?.toLowerCase().includes(query) ||
+        loc.city?.toLowerCase().includes(query) ||
+        loc.address?.toLowerCase().includes(query) ||
+        loc.description?.toLowerCase().includes(query)
+      )
+    }
+
+    // Province filter
+    if (filterProvince !== "all") {
+      filtered = filtered.filter((loc) => loc.province === filterProvince)
+    }
+
+    setFilteredLocations(filtered)
+  }, [locations, searchQuery, filterProvince])
 
   async function fetchLocations() {
     try {
@@ -182,6 +209,37 @@ export default function LocationsPage() {
             </p>
           </div>
 
+          {/* Search and Filter */}
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="搜索地点名称、省份、城市、地址..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="w-full md:w-48">
+                  <select
+                    value={filterProvince}
+                    onChange={(e) => setFilterProvince(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">全部省份</option>
+                    {Array.from(new Set(locations.map(loc => loc.province).filter(Boolean))).sort().map(province => (
+                      <option key={province} value={province}>{province}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mt-2 text-sm text-gray-500">
+                找到 {filteredLocations.length} 个地点
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 提交按钮 */}
           <div className="flex justify-end mb-6">
             <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -256,12 +314,12 @@ export default function LocationsPage() {
                     <Label htmlFor="description">描述</Label>
                     <Textarea
                       id="description"
-                      placeholder="单杠数量、高度、周边环境等信息..."
+                      placeholder="例如：单杠数量、高度、杠面宽度/粗细/手感、安全性（是否牢固）、周边环境等..."
                       value={formData.description}
                       onChange={(e) =>
                         setFormData({ ...formData, description: e.target.value })
                       }
-                      rows={2}
+                      rows={3}
                     />
                   </div>
 
@@ -325,17 +383,23 @@ export default function LocationsPage() {
           {/* 地点列表 */}
           {loading ? (
             <div className="text-center py-12 text-gray-500">加载中...</div>
-          ) : locations.length === 0 ? (
+          ) : filteredLocations.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">暂无单杠位置信息</p>
-                <p className="text-gray-400 text-sm mt-1">成为第一个分享者吧！</p>
+                {locations.length === 0 ? (
+                  <>
+                    <p className="text-gray-500">暂无单杠位置信息</p>
+                    <p className="text-gray-400 text-sm mt-1">成为第一个分享者吧！</p>
+                  </>
+                ) : (
+                  <p className="text-gray-500">没有找到符合条件的地点</p>
+                )}
               </CardContent>
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {locations.map((location) => (
+              {filteredLocations.map((location) => (
                 <Card key={location.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   {location.image_url ? (
                     <div className="aspect-video bg-gray-100">
