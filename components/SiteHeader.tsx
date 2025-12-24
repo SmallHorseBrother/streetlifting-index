@@ -27,11 +27,11 @@ export function SiteHeader({ currentPage }: SiteHeaderProps) {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <Link href="/" className={linkClass("home")}>首页</Link>
+            <Link href="/locations" className={linkClass("locations")}>寻找单杠</Link>
             <Link href="/calculator" className={linkClass("calculator")}>力量计算器</Link>
             <Link href="/submit" className={linkClass("submit")}>数据提交</Link>
             <Link href="/data" className={linkClass("data")}>社区数据</Link>
             <Link href="/stories" className={linkClass("stories")}>社区故事</Link>
-            <Link href="/locations" className={linkClass("locations")}>寻找单杠</Link>
           </div>
           {/* Mobile Navigation */}
           <div className="flex items-center md:hidden">

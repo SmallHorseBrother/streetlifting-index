@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { DonationSection } from "@/components/donation-section"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,6 +49,113 @@ function getLocationImages(location: Location): string[] {
   return []
 }
 
+// 新增：图片画廊组件
+interface ImageGalleryProps {
+  images: string[]
+  initialIndex: number
+  isOpen: boolean
+  onClose: () => void
+}
+
+function ImageGallery({ images, initialIndex, isOpen, onClose }: ImageGalleryProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+
+  // 当初始索引或打开状态改变时，重置当前索引
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentIndex(initialIndex)
+    }
+  }, [initialIndex, isOpen])
+
+  // 键盘导航
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setCurrentIndex(prev => (prev - 1 + images.length) % images.length)
+      } else if (e.key === "ArrowRight") {
+        setCurrentIndex(prev => (prev + 1) % images.length)
+      } else if (e.key === "Escape") {
+        onClose()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isOpen, images.length, onClose])
+
+  if (!isOpen) return null
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-[95vw] h-[95vh] w-full p-0 bg-black/95 border-none flex flex-col items-center justify-center">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+        >
+          <X className="h-6 w-6" />
+        </button>
+
+        {/* 主图 */}
+        <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-12 overflow-hidden">
+          <img 
+            src={images[currentIndex]} 
+            alt={`Gallery image ${currentIndex + 1}`}
+            className="max-h-full max-w-full object-contain"
+          />
+          
+          {/* 切换按钮 */}
+          {images.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => {
+                   e.stopPropagation();
+                   setCurrentIndex(prev => (prev - 1 + images.length) % images.length);
+                }}
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </button>
+              <button 
+                onClick={(e) => {
+                   e.stopPropagation();
+                   setCurrentIndex(prev => (prev + 1) % images.length);
+                }}
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              >
+                <ChevronRight className="h-8 w-8" />
+              </button>
+            </>
+          )}
+
+          {/* 计数器 */}
+          <div className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-black/60 rounded-full text-white text-sm">
+            {currentIndex + 1} / {images.length}
+          </div>
+        </div>
+
+        {/* 底部缩略图 (可选，如果屏幕够大) */}
+        {images.length > 1 && (
+          <div className="absolute bottom-4 w-full flex justify-center gap-2 px-4 overflow-x-auto pb-safe">
+            {images.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-md overflow-hidden border-2 transition-colors ${
+                  idx === currentIndex ? 'border-white' : 'border-transparent opacity-50 hover:opacity-100'
+                }`}
+              >
+                <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([])
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([])
@@ -68,6 +176,11 @@ export default function LocationsPage() {
     city: "",
     province: "",
   })
+
+  // 画廊状态
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [galleryInitialIndex, setGalleryInitialIndex] = useState(0)
 
   useEffect(() => {
     fetchLocations()
@@ -282,6 +395,12 @@ export default function LocationsPage() {
         alert("复制失败，请手动复制")
       }
     )
+  }
+
+  function openGallery(images: string[], index: number) {
+    setGalleryImages(images)
+    setGalleryInitialIndex(index)
+    setGalleryOpen(true)
   }
 
   return (
@@ -517,42 +636,69 @@ export default function LocationsPage() {
                   location={location} 
                   onEdit={handleEdit}
                   onShare={handleShare}
+                  onImageClick={openGallery}
                 />
               ))}
             </div>
           )}
+          
+          {/* 底部打赏区域 */}
+          <div className="mt-16 border-t pt-8 border-green-200/50">
+            <DonationSection variant="footer" />
+          </div>
         </div>
       </div>
+
+      {/* 图片画廊 */}
+      <ImageGallery 
+        images={galleryImages}
+        initialIndex={galleryInitialIndex}
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+      />
     </div>
   )
 }
 
-// 独立的地点卡片组件，支持图片轮播
+// 独立的地点卡片组件
 function LocationCard({ 
   location, 
   onEdit, 
-  onShare 
+  onShare,
+  onImageClick 
 }: { 
   location: Location
   onEdit: (location: Location) => void
   onShare: (location: Location) => void
+  onImageClick: (images: string[], index: number) => void
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const images = getLocationImages(location)
   const imageCount = images.length
 
-  const nextImage = () => {
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation()
     setCurrentImageIndex((prev) => (prev + 1) % imageCount)
   }
 
-  const prevImage = () => {
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation()
     setCurrentImageIndex((prev) => (prev - 1 + imageCount) % imageCount)
   }
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       {/* 图片区域 */}
-      <div className="aspect-video bg-gray-100 relative group">
+      <div 
+        className="aspect-video bg-gray-100 relative group cursor-pointer"
+        onClick={() => {
+          if (imageCount > 0) {
+            onImageClick(images, currentImageIndex)
+          } else {
+            onEdit(location) // 无图时点击编辑
+          }
+        }}
+      >
         {imageCount > 0 ? (
           <>
             <img
@@ -560,45 +706,48 @@ function LocationCard({
               alt={location.name}
               className="w-full h-full object-cover"
             />
-            {/* 图片计数和轮播控制 */}
+            {/* 图片计数/放大提示 */}
+            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-90 backdrop-blur-sm">
+               {currentImageIndex + 1} / {imageCount}
+            </div>
+
+            {/* 轮播控制 */}
             {imageCount > 1 && (
               <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
                   onClick={nextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                  {images.map((_, idx) => (
-                    <span
-                      key={idx}
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        idx === currentImageIndex ? "bg-white" : "bg-white/50"
-                      }`}
-                    />
-                  ))}
-                </div>
               </>
             )}
-            {/* 可以补充更多图片的提示 */}
+            
+            {/* 补充图片提示 */}
             {imageCount < MAX_IMAGES && (
               <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="h-3 w-3" />
                 可补充{MAX_IMAGES - imageCount}张图
               </div>
             )}
+            
+            {/* 点击查看大图提示 */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="bg-black/40 text-white px-3 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-sm">
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="text-sm font-medium">查看大图</span>
+                </div>
+            </div>
           </>
         ) : (
           <div 
             className="w-full h-full bg-gradient-to-br from-green-100 to-emerald-200 flex flex-col items-center justify-center cursor-pointer hover:from-green-200 hover:to-emerald-300 transition-colors"
-            onClick={() => onEdit(location)}
           >
             <Camera className="h-10 w-10 text-green-400 mb-2" />
             <span className="text-green-600 text-sm font-medium">待补充图片</span>
@@ -617,7 +766,7 @@ function LocationCard({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onEdit(location)}
+              onClick={(e) => { e.stopPropagation(); onEdit(location); }}
               className="h-8 w-8 p-0"
               title="编辑此地点"
             >
@@ -626,7 +775,7 @@ function LocationCard({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onShare(location)}
+              onClick={(e) => { e.stopPropagation(); onShare(location); }}
               className="h-8 w-8 p-0"
               title="分享此地点"
             >

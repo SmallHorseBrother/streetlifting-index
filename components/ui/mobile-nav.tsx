@@ -17,20 +17,20 @@ export function MobileNav() {
           <Link href="/" className="text-lg font-medium hover:text-blue-600 transition-colors">
             首页
           </Link>
-          <Link href="/submit" className="text-lg font-medium hover:text-blue-600 transition-colors">
-            数据提交
+          <Link href="/locations" className="text-lg font-medium hover:text-blue-600 transition-colors">
+            寻找单杠
           </Link>
           <Link href="/calculator" className="text-lg font-medium hover:text-blue-600 transition-colors">
             公式计算器
+          </Link>
+          <Link href="/submit" className="text-lg font-medium hover:text-blue-600 transition-colors">
+            数据提交
           </Link>
           <Link href="/data" className="text-lg font-medium hover:text-blue-600 transition-colors">
             社区数据
           </Link>
           <Link href="/stories" className="text-lg font-medium hover:text-blue-600 transition-colors">
             社区故事
-          </Link>
-          <Link href="/locations" className="text-lg font-medium hover:text-blue-600 transition-colors">
-            寻找单杠
           </Link>
         </nav>
       </SheetContent>
