@@ -898,18 +898,35 @@ export default function CalculatorPage() {
                   )}
 
                   {isUpperBodyExercise(exerciseType) && mode === "reverse_reps" && (
-                    <div>
-                      <Label htmlFor="workingAddedWeight">做组重量（附加负重）(kg)</Label>
-                      <Input
-                        id="workingAddedWeight"
-                        type="number"
-                        step="0.1"
-                        placeholder="例如 20"
-                        value={formData.workingAddedWeight}
-                        onChange={(e) => setFormData({ ...formData, workingAddedWeight: e.target.value })}
-                        required
-                      />
-                    </div>
+                    <>
+                      <div>
+                        <Label htmlFor="added1RM">负重1RM (kg)</Label>
+                        <Input
+                          id="added1RM"
+                          type="number"
+                          step="0.1"
+                          placeholder="例如 50"
+                          value={formData.added1RM}
+                          onChange={(e) => setFormData({ ...formData, added1RM: e.target.value })}
+                          required
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          输入目标负重1RM和做组重量，反推可完成次数
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor="workingAddedWeight">做组重量（附加负重）(kg)</Label>
+                        <Input
+                          id="workingAddedWeight"
+                          type="number"
+                          step="0.1"
+                          placeholder="例如 20"
+                          value={formData.workingAddedWeight}
+                          onChange={(e) => setFormData({ ...formData, workingAddedWeight: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </>
                   )}
 
                   {/* 次数输入 - 上肢类和三大项都需要 */}
