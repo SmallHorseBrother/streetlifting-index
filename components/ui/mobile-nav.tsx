@@ -23,11 +23,8 @@ export function MobileNav() {
           <Link href="/calculator" className="text-lg font-medium hover:text-blue-600 transition-colors">
             公式计算器
           </Link>
-          <Link href="/submit" className="text-lg font-medium hover:text-blue-600 transition-colors">
-            数据提交
-          </Link>
           <Link href="/data" className="text-lg font-medium hover:text-blue-600 transition-colors">
-            社区数据
+            数据提交与社区
           </Link>
           <Link href="/stories" className="text-lg font-medium hover:text-blue-600 transition-colors">
             社区故事

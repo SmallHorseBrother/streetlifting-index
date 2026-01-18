@@ -34,14 +34,11 @@ export default function SubmissionSuccessPage() {
               <Link href="/" className="text-gray-700 hover:text-blue-600">
                 首页
               </Link>
-              <Link href="/submit" className="text-gray-700 hover:text-blue-600">
-                数据提交
-              </Link>
               <Link href="/calculator" className="text-gray-700 hover:text-blue-600">
                 公式计算器
               </Link>
               <Link href="/data" className="text-gray-700 hover:text-blue-600">
-                社区数据
+                数据社区
               </Link>
             </div>
             {/* Mobile Navigation */}
@@ -91,22 +88,10 @@ export default function SubmissionSuccessPage() {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader className="text-center pb-2">
                   <Users className="h-12 w-12 text-blue-600 mx-auto mb-3" />
-                  <CardTitle className="text-lg">查看社区数据</CardTitle>
+                  <CardTitle className="text-lg">数据社区</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center">
-                  <p className="text-gray-600 text-sm">浏览其他用户的成绩，观看训练视频，互相学习进步</p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/submit">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                <CardHeader className="text-center pb-2">
-                  <TrendingUp className="h-12 w-12 text-purple-600 mx-auto mb-3" />
-                  <CardTitle className="text-lg">继续提交数据</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-gray-600 text-sm">记录更多训练成绩，追踪您的进步历程</p>
+                  <p className="text-gray-600 text-sm">浏览其他用户的成绩，观看训练视频，或继续提交数据</p>
                 </CardContent>
               </Card>
             </Link>

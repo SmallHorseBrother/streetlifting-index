@@ -5,7 +5,7 @@ import { TrendingUp } from "lucide-react"
 import { MobileNav } from "@/components/ui/mobile-nav"
 
 interface SiteHeaderProps {
-  currentPage?: "home" | "calculator" | "submit" | "data" | "stories" | "locations"
+  currentPage?: "home" | "calculator" | "data" | "stories" | "locations"
 }
 
 export function SiteHeader({ currentPage }: SiteHeaderProps) {
@@ -29,8 +29,7 @@ export function SiteHeader({ currentPage }: SiteHeaderProps) {
             <Link href="/" className={linkClass("home")}>首页</Link>
             <Link href="/locations" className={linkClass("locations")}>寻找单杠</Link>
             <Link href="/calculator" className={linkClass("calculator")}>力量计算器</Link>
-            <Link href="/submit" className={linkClass("submit")}>数据提交</Link>
-            <Link href="/data" className={linkClass("data")}>社区数据</Link>
+            <Link href="/data" className={linkClass("data")}>数据提交与社区</Link>
             <Link href="/stories" className={linkClass("stories")}>社区故事</Link>
           </div>
           {/* Mobile Navigation */}
