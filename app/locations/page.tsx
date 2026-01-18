@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { SiteHeader } from "@/components/SiteHeader"
+import { BottomNav } from "@/components/BottomNav"
 import { createClient } from "@supabase/supabase-js"
 import {
   Dialog,
@@ -404,12 +405,22 @@ export default function LocationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
-      <SiteHeader currentPage="locations" />
+    <div className="min-h-screen bg-gray-50">
+      {/* 桌面端显示顶部导航 */}
+      <div className="hidden md:block">
+        <SiteHeader currentPage="locations" />
+      </div>
 
-      <div className="py-12 px-4 sm:px-6 lg:px-8">
+      {/* 移动端App风格头部 */}
+      <header className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-100">
+        <div className="flex items-center justify-center px-4 h-14">
+          <h1 className="text-lg font-bold text-gray-900">寻找单杠</h1>
+        </div>
+      </header>
+
+      <div className="py-4 md:py-12 px-3 md:px-4 sm:px-6 lg:px-8 pb-24 md:pb-12">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
+          <div className="hidden md:block text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">寻找单杠</h1>
             <p className="text-gray-600 mt-2">
               全国各地的单杠位置分享，帮你找到附近的训练场地
@@ -643,7 +654,7 @@ export default function LocationsPage() {
           )}
           
           {/* 底部打赏区域 */}
-          <div className="mt-16 border-t pt-8 border-green-200/50">
+          <div className="hidden md:block mt-16 border-t pt-8 border-green-200/50">
             <DonationSection variant="footer" />
           </div>
         </div>
@@ -656,6 +667,9 @@ export default function LocationsPage() {
         isOpen={galleryOpen}
         onClose={() => setGalleryOpen(false)}
       />
+      
+      {/* 底部导航 - 仅移动端 */}
+      <BottomNav />
     </div>
   )
 }

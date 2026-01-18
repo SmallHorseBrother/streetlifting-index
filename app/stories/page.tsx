@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { SiteHeader } from "@/components/SiteHeader"
+import { BottomNav } from "@/components/BottomNav"
 import { createClient } from "@supabase/supabase-js"
 import {
   Dialog,
@@ -139,12 +140,22 @@ export default function StoriesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <SiteHeader currentPage="stories" />
+    <div className="min-h-screen bg-gray-50">
+      {/* 桌面端显示顶部导航 */}
+      <div className="hidden md:block">
+        <SiteHeader currentPage="stories" />
+      </div>
 
-      <div className="py-12 px-4 sm:px-6 lg:px-8">
+      {/* 移动端App风格头部 */}
+      <header className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-100">
+        <div className="flex items-center justify-center px-4 h-14">
+          <h1 className="text-lg font-bold text-gray-900">社区故事</h1>
+        </div>
+      </header>
+
+      <div className="py-4 md:py-12 px-3 md:px-4 sm:px-6 lg:px-8 pb-24 md:pb-12">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
+          <div className="hidden md:block text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">社区故事</h1>
             <p className="text-gray-600 mt-2">
               记录社区中的重要事件、故事和发展历程，点击标题或视频链接可跳转查看
@@ -323,6 +334,9 @@ export default function StoriesPage() {
           </Card>
         </div>
       </div>
+      
+      {/* 底部导航 - 仅移动端 */}
+      <BottomNav />
     </div>
   )
 }
