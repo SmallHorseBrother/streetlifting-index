@@ -22,6 +22,35 @@ Continue building your app on:
 
 **[https://v0.dev/chat/projects/YhxGYJYx3aQ](https://v0.dev/chat/projects/YhxGYJYx3aQ)**
 
+## 本地开发
+
+### 1. 安装依赖
+
+```bash
+npm install --legacy-peer-deps
+```
+
+> 如使用 pnpm，请先升级到支持 lockfileVersion 9 的版本后执行 `pnpm install`。
+
+### 2. 配置环境变量
+
+复制 `.env.example` 为 `.env.local`，填入你的 Supabase 项目凭证：
+
+- `NEXT_PUBLIC_SUPABASE_URL`：在 [Supabase Dashboard](https://supabase.com/dashboard) 创建项目后获取
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`：同上获取 anon/public key
+
+### 3. 初始化数据库
+
+在 Supabase SQL Editor 中依次执行 `scripts/` 目录下的 SQL 脚本（01-create-tables.sql 等）。
+
+### 4. 启动开发服务器
+
+```bash
+npm run dev
+```
+
+访问 http://localhost:3000
+
 ## How It Works
 
 1. Create and modify your project using [v0.dev](https://v0.dev)

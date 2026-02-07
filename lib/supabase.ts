@@ -5,6 +5,16 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// Coach Link 项目数据库客户端 - 用于「寻找单杠」业务，与 coachlink 项目数据同步
+// coachlink 使用表名 streetlifting_locations、存储桶 streetlifting-locations
+const coachLinkSupabaseUrl = process.env.NEXT_PUBLIC_COACHLINK_SUPABASE_URL
+const coachLinkSupabaseAnonKey = process.env.NEXT_PUBLIC_COACHLINK_SUPABASE_ANON_KEY
+
+export const coachLinkSupabase =
+  coachLinkSupabaseUrl && coachLinkSupabaseAnonKey
+    ? createClient(coachLinkSupabaseUrl, coachLinkSupabaseAnonKey)
+    : null
+
 export type Database = {
   public: {
     Tables: {

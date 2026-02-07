@@ -11,3 +11,6 @@
 [build.environment]
   NEXT_PUBLIC_SUPABASE_URL = "https://chawreimucaalwgqdjra.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoYXdyZWltdWNhYWx3Z3FkanJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwOTIyOTcsImV4cCI6MjA2NzY2ODI5N30.t4Lpg2EzHNJoq5K0ZebCYy5KaDljyIJhOpEcW11B6WY"
+  # Coach Link 数据库 - 寻找单杠与 coachlink 项目数据同步
+  NEXT_PUBLIC_COACHLINK_SUPABASE_URL = "https://uhlqribpagvklpqmcqvo.supabase.co"
+  NEXT_PUBLIC_COACHLINK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVobHFyaWJwYWd2a2xwcW1jcXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzYxNTgsImV4cCI6MjA2NzA1MjE1OH0.xh-2y_FBWkfGyCWgn949sUezIC5YC0wFGEnJrvEj0dc"

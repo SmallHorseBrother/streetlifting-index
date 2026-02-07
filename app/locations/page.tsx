@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { SiteHeader } from "@/components/SiteHeader"
 import { BottomNav } from "@/components/BottomNav"
-import { createClient } from "@supabase/supabase-js"
+import { supabase, coachLinkSupabase } from "@/lib/supabase"
 import {
   Dialog,
   DialogContent,
@@ -20,10 +20,10 @@ import {
 } from "@/components/ui/dialog"
 import { DonationSection } from "@/components/donation-section"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// 寻找单杠使用 Coach Link 数据库，与 coachlink 项目数据同步
+const db = coachLinkSupabase
+const TABLE_NAME = "streetlifting_locations"
+const STORAGE_BUCKET = "streetlifting-locations"
 
 const MAX_IMAGES = 4
 
@@ -212,9 +212,15 @@ export default function LocationsPage() {
   }, [locations, searchQuery, filterProvince])
 
   async function fetchLocations() {
+    if (!db) {
+      console.error("Coach Link 数据库未配置")
+      setLocations([])
+      setLoading(false)
+      return
+    }
     try {
-      const { data, error } = await supabase
-        .from("locations")
+      const { data, error } = await db
+        .from(TABLE_NAME)
         .select("*")
         .order("created_at", { ascending: false })
 
@@ -261,8 +267,12 @@ export default function LocationsPage() {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
         const filePath = `bar-images/${fileName}`
 
-        const { error: uploadError } = await supabase.storage
-          .from("locations")
+        if (!db) {
+          alert("数据库未配置，无法上传图片")
+          continue
+        }
+        const { error: uploadError } = await db.storage
+          .from(STORAGE_BUCKET)
           .upload(filePath, file)
 
         if (uploadError) {
@@ -271,8 +281,8 @@ export default function LocationsPage() {
           continue
         }
 
-        const { data: urlData } = supabase.storage
-          .from("locations")
+        const { data: urlData } = db.storage
+          .from(STORAGE_BUCKET)
           .getPublicUrl(filePath)
 
         setImageUrls(prev => [...prev, urlData.publicUrl])
@@ -297,13 +307,17 @@ export default function LocationsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!formData.name.trim()) return
+    if (!db) {
+      alert("数据库未配置，无法提交")
+      return
+    }
 
     setSubmitting(true)
     try {
       if (editingLocation) {
         // 更新现有记录
-        const { error } = await supabase
-          .from("locations")
+        const { error } = await db
+          .from(TABLE_NAME)
           .update({
             name: formData.name,
             description: formData.description || null,
@@ -324,7 +338,7 @@ export default function LocationsPage() {
         }
       } else {
         // 新增记录
-        const { error } = await supabase.from("locations").insert([
+        const { error } = await db.from(TABLE_NAME).insert([
           {
             name: formData.name,
             description: formData.description || null,
@@ -426,6 +440,14 @@ export default function LocationsPage() {
               全国各地的单杠位置分享，帮你找到附近的训练场地
             </p>
           </div>
+
+          {!db && (
+            <Card className="mb-6 border-amber-200 bg-amber-50">
+              <CardContent className="p-4 text-center text-amber-800">
+                寻找单杠功能需要配置 Coach Link 数据库（NEXT_PUBLIC_COACHLINK_SUPABASE_URL 和 NEXT_PUBLIC_COACHLINK_SUPABASE_ANON_KEY）
+              </CardContent>
+            </Card>
+          )}
 
           {/* Search and Filter */}
           <Card className="mb-6">

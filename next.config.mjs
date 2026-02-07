@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
-  distDir: 'out',
+  // distDir 使用默认 .next，避免与 output: 'export' 的 out 目录冲突
   eslint: {
     ignoreDuringBuilds: true,
   },
