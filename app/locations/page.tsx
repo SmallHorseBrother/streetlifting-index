@@ -459,6 +459,9 @@ export default function LocationsPage() {
               <p className="mt-1">
                 为避免后续数据不同步，建议大家从现在开始在 Coach Link / 启能教链继续使用该功能。
               </p>
+              <p className="mt-1 font-medium">
+                温馨提示：启能教链小程序目前仍在开发完善中。
+              </p>
             </CardContent>
           </Card>
 
