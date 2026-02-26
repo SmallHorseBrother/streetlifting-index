@@ -441,6 +441,24 @@ export default function LocationsPage() {
             </p>
           </div>
 
+          <Card className="mb-6 border-blue-200 bg-blue-50">
+            <CardContent className="p-4 text-sm md:text-base text-blue-900 leading-relaxed">
+              <p className="font-semibold">功能迁移通知</p>
+              <p className="mt-1">
+                寻找单杠功能已迁移至 Coach Link（官网：
+                <a
+                  href="https://coachlink.fit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-medium"
+                >
+                  coachlink.fit
+                </a>
+                ，小程序：启能教链）。建议大家后续在 Coach Link / 启能教链继续使用该功能。
+              </p>
+            </CardContent>
+          </Card>
+
           {!db && (
             <Card className="mb-6 border-amber-200 bg-amber-50">
               <CardContent className="p-4 text-center text-amber-800">
