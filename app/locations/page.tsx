@@ -19,6 +19,7 @@ import {
   Clock3,
   ArrowUpDown,
   FilterX,
+  Info,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { DonationSection } from "@/components/donation-section"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
 // 寻找单杠使用 Coach Link 数据库，与 coachlink 项目数据同步
 const db = coachLinkSupabase
@@ -45,7 +53,24 @@ const STORAGE_BUCKET = "streetlifting-locations"
 
 const MAX_IMAGES = 4
 const HOT_CITIES_LIMIT = 6
+const TOP_PROVINCES_LIMIT = 8
+const ANALYTICS_MONTHS = 6
+const PRIMARY_SITE_URL = "https://jwcommunity.space"
 type SortBy = "newest" | "oldest" | "name"
+
+const provinceChartConfig = {
+  count: {
+    label: "点位数",
+    color: "#16a34a",
+  },
+} satisfies ChartConfig
+
+const trendChartConfig = {
+  count: {
+    label: "新增点位",
+    color: "#059669",
+  },
+} satisfies ChartConfig
 
 type Location = {
   id: string
@@ -76,6 +101,19 @@ function getFullAddress(location: Pick<Location, "province" | "city" | "address"
 function getMapSearchUrl(location: Pick<Location, "name" | "province" | "city" | "address">): string {
   const query = getFullAddress(location) || location.name
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
+
+function getLocationsPageUrl(): string {
+  if (typeof window === "undefined") {
+    return `${PRIMARY_SITE_URL}/locations`
+  }
+
+  const isLocalhost = /localhost|127\.0\.0\.1/.test(window.location.hostname)
+  if (isLocalhost) {
+    return `${window.location.origin}/locations`
+  }
+
+  return `${PRIMARY_SITE_URL}/locations`
 }
 
 function formatDate(value?: string): string {
@@ -242,6 +280,61 @@ export default function LocationsPage() {
       .map(([city, count]) => ({ city, count }))
   }, [locations])
 
+  const locationsAnalytics = useMemo(() => {
+    const total = locations.length
+    const withImages = locations.filter((loc) => getLocationImages(loc).length > 0).length
+    const withDescription = locations.filter((loc) => Boolean(loc.description?.trim())).length
+    const totalImages = locations.reduce((sum, loc) => sum + getLocationImages(loc).length, 0)
+
+    const provinceCounter = new Map<string, number>()
+    locations.forEach((loc) => {
+      const provinceName = loc.province?.trim() || "未填写省份"
+      provinceCounter.set(provinceName, (provinceCounter.get(provinceName) || 0) + 1)
+    })
+
+    const topProvinces = [...provinceCounter.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, TOP_PROVINCES_LIMIT)
+      .map(([province, count]) => ({
+        province,
+        count,
+      }))
+
+    const monthlyCounter = new Map<string, number>()
+    locations.forEach((loc) => {
+      const date = new Date(loc.created_at)
+      if (Number.isNaN(date.getTime())) return
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      monthlyCounter.set(key, (monthlyCounter.get(key) || 0) + 1)
+    })
+
+    const now = new Date()
+    const monthKeys = Array.from({ length: ANALYTICS_MONTHS }, (_, idx) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (ANALYTICS_MONTHS - idx - 1), 1)
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    })
+
+    const monthlyTrend = monthKeys.map((key) => {
+      const [year, month] = key.split("-")
+      return {
+        month: `${Number(month)}月`,
+        fullMonth: `${year}年${Number(month)}月`,
+        count: monthlyCounter.get(key) || 0,
+      }
+    })
+
+    return {
+      total,
+      withImages,
+      withDescription,
+      imageCoverage: total > 0 ? Math.round((withImages / total) * 100) : 0,
+      descriptionCoverage: total > 0 ? Math.round((withDescription / total) * 100) : 0,
+      avgImagesPerLocation: total > 0 ? Number((totalImages / total).toFixed(1)) : 0,
+      topProvinces,
+      monthlyTrend,
+    }
+  }, [locations])
+
   const filteredLocations = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
 
@@ -259,6 +352,12 @@ export default function LocationsPage() {
     })
 
     result = [...result].sort((a, b) => {
+      const aHasImages = getLocationImages(a).length > 0
+      const bHasImages = getLocationImages(b).length > 0
+      if (aHasImages !== bHasImages) {
+        return aHasImages ? -1 : 1
+      }
+
       if (sortBy === "oldest") {
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       }
@@ -455,7 +554,7 @@ export default function LocationsPage() {
   }
 
   function handleShare(location: Location) {
-    const locationUrl = `${window.location.origin}/locations`
+    const locationUrl = getLocationsPageUrl()
     const addressPart = getFullAddress(location)
     
     const shareText = `🏋️ 发现单杠训练点：${location.name}\n📍 地址：${addressPart || "暂无详细地址"}\n${location.description ? `💬 描述：${location.description}\n` : ""}🔗 查看更多单杠位置：${locationUrl}`
@@ -650,6 +749,7 @@ export default function LocationsPage() {
                 <div className="text-gray-600 flex items-center gap-2">
                   <ArrowUpDown className="h-4 w-4 text-gray-500" />
                   <span>{resultsLabel}</span>
+                  <span className="text-xs text-gray-500">已按“有图优先”排序</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -665,6 +765,112 @@ export default function LocationsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-emerald-200 bg-emerald-50/70">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-2 text-sm text-emerald-900">
+                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  每张地点卡片都可以编辑（右上角铅笔按钮或点击无图区域）。如果你也去过该地点，欢迎补充杠体数量/高度、手感、安全性、照明和高峰时段等细节，让数据更实用。
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">单杠数据总体分析</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                统计基于全部 {locationsAnalytics.total} 个点位（不受当前筛选影响），用于快速判断数据完整度与分布情况。
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card className="border-green-100">
+                <CardContent className="p-4">
+                  <div className="text-xs text-gray-500">图片覆盖率</div>
+                  <div className="text-2xl font-bold text-green-700">{locationsAnalytics.imageCoverage}%</div>
+                  <div className="text-xs text-gray-500 mt-1">{locationsAnalytics.withImages} / {locationsAnalytics.total} 个有图</div>
+                </CardContent>
+              </Card>
+              <Card className="border-green-100">
+                <CardContent className="p-4">
+                  <div className="text-xs text-gray-500">描述覆盖率</div>
+                  <div className="text-2xl font-bold text-green-700">{locationsAnalytics.descriptionCoverage}%</div>
+                  <div className="text-xs text-gray-500 mt-1">{locationsAnalytics.withDescription} / {locationsAnalytics.total} 个有描述</div>
+                </CardContent>
+              </Card>
+              <Card className="border-green-100">
+                <CardContent className="p-4">
+                  <div className="text-xs text-gray-500">平均图片数</div>
+                  <div className="text-2xl font-bold text-green-700">{locationsAnalytics.avgImagesPerLocation}</div>
+                  <div className="text-xs text-gray-500 mt-1">每个点位的平均照片数量</div>
+                </CardContent>
+              </Card>
+              <Card className="border-green-100">
+                <CardContent className="p-4">
+                  <div className="text-xs text-gray-500">覆盖省份</div>
+                  <div className="text-2xl font-bold text-green-700">{provinceOptions.length}</div>
+                  <div className="text-xs text-gray-500 mt-1">省份字段去重后统计</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-4">
+              <Card className="border-green-100">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">省份点位分布（Top {TOP_PROVINCES_LIMIT}）</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {locationsAnalytics.topProvinces.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-8 text-center">暂无可用于统计的省份数据</p>
+                  ) : (
+                    <ChartContainer config={provinceChartConfig} className="h-64 w-full">
+                      <BarChart data={locationsAnalytics.topProvinces} margin={{ left: 8, right: 8 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="province" tickLine={false} axisLine={false} />
+                        <ChartTooltip content={<ChartTooltipContent labelKey="province" />} />
+                        <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ChartContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-green-100">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">最近 {ANALYTICS_MONTHS} 个月新增趋势</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <ChartContainer config={trendChartConfig} className="h-64 w-full">
+                    <LineChart data={locationsAnalytics.monthlyTrend} margin={{ left: 8, right: 8 }}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent
+                            formatter={(value, _name, item) => (
+                              <div className="flex items-center justify-between gap-3 w-full">
+                                <span className="text-muted-foreground">{item.payload.fullMonth}</span>
+                                <span className="font-medium text-foreground">{value} 个</span>
+                              </div>
+                            )}
+                          />
+                        }
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        stroke="var(--color-count)"
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
 
           <div className="flex justify-end">
             <Dialog open={dialogOpen} onOpenChange={(open) => {
