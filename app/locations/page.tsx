@@ -1,7 +1,25 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { MapPin, Plus, Upload, Image as ImageIcon, Building2, Share2, ChevronLeft, ChevronRight, Edit2, Camera, X } from "lucide-react"
+import { useState, useEffect, useRef, useMemo } from "react"
+import {
+  MapPin,
+  Plus,
+  Upload,
+  Building2,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Camera,
+  X,
+  Navigation,
+  Copy,
+  Search,
+  Sparkles,
+  Clock3,
+  ArrowUpDown,
+  FilterX,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { SiteHeader } from "@/components/SiteHeader"
 import { BottomNav } from "@/components/BottomNav"
-import { supabase, coachLinkSupabase } from "@/lib/supabase"
+import { coachLinkSupabase } from "@/lib/supabase"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +44,8 @@ const TABLE_NAME = "streetlifting_locations"
 const STORAGE_BUCKET = "streetlifting-locations"
 
 const MAX_IMAGES = 4
+const HOT_CITIES_LIMIT = 6
+type SortBy = "newest" | "oldest" | "name"
 
 type Location = {
   id: string
@@ -34,12 +54,11 @@ type Location = {
   address?: string
   city?: string
   province?: string
-  image_url?: string  // 旧字段，保持兼容
-  image_urls?: string[]  // 新字段，支持多图
+  image_url?: string
+  image_urls?: string[]
   created_at: string
 }
 
-// 获取位置的所有图片（兼容旧数据）
 function getLocationImages(location: Location): string[] {
   if (location.image_urls && location.image_urls.length > 0) {
     return location.image_urls
@@ -50,7 +69,26 @@ function getLocationImages(location: Location): string[] {
   return []
 }
 
-// 新增：图片画廊组件
+function getFullAddress(location: Pick<Location, "province" | "city" | "address">): string {
+  return [location.province, location.city, location.address].filter(Boolean).join(" ")
+}
+
+function getMapSearchUrl(location: Pick<Location, "name" | "province" | "city" | "address">): string {
+  const query = getFullAddress(location) || location.name
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
+
+function formatDate(value?: string): string {
+  if (!value) return "未知"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "未知"
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date)
+}
+
 interface ImageGalleryProps {
   images: string[]
   initialIndex: number
@@ -159,7 +197,6 @@ function ImageGallery({ images, initialIndex, isOpen, onClose }: ImageGalleryPro
 
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([])
-  const [filteredLocations, setFilteredLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -169,6 +206,7 @@ export default function LocationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterProvince, setFilterProvince] = useState("all")
+  const [sortBy, setSortBy] = useState<SortBy>("newest")
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
   const [formData, setFormData] = useState({
     name: "",
@@ -187,29 +225,51 @@ export default function LocationsPage() {
     fetchLocations()
   }, [])
 
-  // Filter locations based on search query and province filter
-  useEffect(() => {
-    let filtered = [...locations]
+  const provinceOptions = useMemo(() => {
+    return Array.from(new Set(locations.map((loc) => loc.province).filter(Boolean))).sort()
+  }, [locations])
 
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((loc) =>
+  const hotCities = useMemo(() => {
+    const cityCounter = new Map<string, number>()
+    locations.forEach((loc) => {
+      if (!loc.city) return
+      cityCounter.set(loc.city, (cityCounter.get(loc.city) || 0) + 1)
+    })
+
+    return [...cityCounter.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, HOT_CITIES_LIMIT)
+      .map(([city, count]) => ({ city, count }))
+  }, [locations])
+
+  const filteredLocations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    let result = locations.filter((loc) => {
+      const matchedQuery =
+        !query ||
         loc.name.toLowerCase().includes(query) ||
         loc.province?.toLowerCase().includes(query) ||
         loc.city?.toLowerCase().includes(query) ||
         loc.address?.toLowerCase().includes(query) ||
         loc.description?.toLowerCase().includes(query)
-      )
-    }
 
-    // Province filter
-    if (filterProvince !== "all") {
-      filtered = filtered.filter((loc) => loc.province === filterProvince)
-    }
+      const matchedProvince = filterProvince === "all" || loc.province === filterProvince
+      return matchedQuery && matchedProvince
+    })
 
-    setFilteredLocations(filtered)
-  }, [locations, searchQuery, filterProvince])
+    result = [...result].sort((a, b) => {
+      if (sortBy === "oldest") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      }
+      if (sortBy === "name") {
+        return a.name.localeCompare(b.name, "zh-CN")
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
+    return result
+  }, [locations, searchQuery, filterProvince, sortBy])
 
   async function fetchLocations() {
     if (!db) {
@@ -396,9 +456,7 @@ export default function LocationsPage() {
 
   function handleShare(location: Location) {
     const locationUrl = `${window.location.origin}/locations`
-    const addressPart = [location.province, location.city, location.address]
-      .filter(Boolean)
-      .join(" ")
+    const addressPart = getFullAddress(location)
     
     const shareText = `🏋️ 发现单杠训练点：${location.name}\n📍 地址：${addressPart || "暂无详细地址"}\n${location.description ? `💬 描述：${location.description}\n` : ""}🔗 查看更多单杠位置：${locationUrl}`
     
@@ -412,34 +470,109 @@ export default function LocationsPage() {
     )
   }
 
+  function handleCopyAddress(location: Location) {
+    const address = getFullAddress(location)
+    if (!address) {
+      alert("该地点暂无详细地址")
+      return
+    }
+
+    navigator.clipboard.writeText(address).then(
+      () => {
+        alert("地址已复制")
+      },
+      () => {
+        alert("复制失败，请手动复制")
+      }
+    )
+  }
+
   function openGallery(images: string[], index: number) {
     setGalleryImages(images)
     setGalleryInitialIndex(index)
     setGalleryOpen(true)
   }
 
+  function clearFilters() {
+    setSearchQuery("")
+    setFilterProvince("all")
+    setSortBy("newest")
+  }
+
+  function pickRandomLocation() {
+    if (filteredLocations.length === 0) return
+    const randomIndex = Math.floor(Math.random() * filteredLocations.length)
+    const randomLocation = filteredLocations[randomIndex]
+    const cardElement = document.getElementById(`location-card-${randomLocation.id}`)
+    if (!cardElement) return
+
+    cardElement.scrollIntoView({ behavior: "smooth", block: "center" })
+    cardElement.classList.add("ring-2", "ring-green-500", "ring-offset-2")
+    window.setTimeout(() => {
+      cardElement.classList.remove("ring-2", "ring-green-500", "ring-offset-2")
+    }, 1500)
+  }
+
+  const withImagesCount = locations.filter((loc) => getLocationImages(loc).length > 0).length
+  const resultsLabel = loading ? "加载中" : `共 ${filteredLocations.length} 个地点`
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 桌面端显示顶部导航 */}
+    <div className="min-h-screen bg-gradient-to-b from-green-50/70 to-white">
       <div className="hidden md:block">
         <SiteHeader currentPage="locations" />
       </div>
 
-      {/* 移动端App风格头部 */}
-      <header className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-100">
+      <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="flex items-center justify-center px-4 h-14">
           <h1 className="text-lg font-bold text-gray-900">寻找单杠</h1>
         </div>
       </header>
 
-      <div className="py-4 md:py-12 px-3 md:px-4 sm:px-6 lg:px-8 pb-24 md:pb-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="hidden md:block text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">寻找单杠</h1>
-            <p className="text-gray-600 mt-2">
-              全国各地的单杠位置分享，帮你找到附近的训练场地
-            </p>
-          </div>
+      <div className="py-4 md:py-10 px-3 md:px-4 sm:px-6 lg:px-8 pb-24 md:pb-12">
+        <div className="max-w-6xl mx-auto space-y-5">
+          <section className="rounded-2xl border border-green-200/70 bg-gradient-to-r from-green-50 to-emerald-50 p-4 md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-xl md:text-3xl font-bold text-gray-900">寻找单杠</h1>
+                <p className="text-gray-600 mt-1 text-sm md:text-base">
+                  更快找到可训练地点，顺手把你知道的点位分享给更多人。
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-white/90 px-3 py-2 border border-green-100">
+                  <div className="text-lg font-bold text-green-700">{locations.length}</div>
+                  <div className="text-xs text-gray-500">全部点位</div>
+                </div>
+                <div className="rounded-xl bg-white/90 px-3 py-2 border border-green-100">
+                  <div className="text-lg font-bold text-green-700">{withImagesCount}</div>
+                  <div className="text-xs text-gray-500">带图片</div>
+                </div>
+                <div className="rounded-xl bg-white/90 px-3 py-2 border border-green-100">
+                  <div className="text-lg font-bold text-green-700">{provinceOptions.length}</div>
+                  <div className="text-xs text-gray-500">覆盖省份</div>
+                </div>
+              </div>
+            </div>
+
+            {hotCities.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <div className="text-xs text-gray-600 flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  热门城市
+                </div>
+                {hotCities.map((item) => (
+                  <button
+                    key={item.city}
+                    onClick={() => setSearchQuery(item.city)}
+                    className="text-xs rounded-full border border-green-200 bg-white px-3 py-1 text-green-700 hover:bg-green-50 transition-colors"
+                  >
+                    {item.city} {item.count}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
 
           {!db && (
             <Card className="mb-6 border-amber-200 bg-amber-50">
@@ -449,39 +582,67 @@ export default function LocationsPage() {
             </Card>
           )}
 
-          {/* Search and Filter */}
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
+          <Card className="border-green-100 shadow-sm">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="搜索地点名称、省份、城市、地址..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full"
+                    className="pl-9"
                   />
                 </div>
-                <div className="w-full md:w-48">
+                <div className="w-full lg:w-48">
                   <select
                     value={filterProvince}
                     onChange={(e) => setFilterProvince(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="all">全部省份</option>
-                    {Array.from(new Set(locations.map(loc => loc.province).filter(Boolean))).sort().map(province => (
-                      <option key={province} value={province}>{province}</option>
+                    {provinceOptions.map((province) => (
+                      <option key={province} value={province}>
+                        {province}
+                      </option>
                     ))}
                   </select>
                 </div>
+
+                <div className="w-full lg:w-40">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortBy)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="newest">最新发布</option>
+                    <option value="oldest">最早发布</option>
+                    <option value="name">名称排序</option>
+                  </select>
+                </div>
               </div>
-              <div className="mt-2 text-sm text-gray-500">
-                找到 {filteredLocations.length} 个地点
+
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm">
+                <div className="text-gray-600 flex items-center gap-2">
+                  <ArrowUpDown className="h-4 w-4 text-gray-500" />
+                  <span>{resultsLabel}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={pickRandomLocation} disabled={filteredLocations.length === 0}>
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    随机看一个
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <FilterX className="h-4 w-4 mr-1" />
+                    重置筛选
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* 提交按钮 */}
-          <div className="flex justify-end mb-6">
+          <div className="flex justify-end">
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open)
               if (!open) resetForm()
@@ -657,12 +818,17 @@ export default function LocationsPage() {
                     <p className="text-gray-400 text-sm mt-1">成为第一个分享者吧！</p>
                   </>
                 ) : (
-                  <p className="text-gray-500">没有找到符合条件的地点</p>
+                  <>
+                    <p className="text-gray-500">没有找到符合条件的地点</p>
+                    <Button variant="outline" size="sm" onClick={clearFilters} className="mt-4">
+                      清空筛选条件
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredLocations.map((location) => (
                 <LocationCard 
                   key={location.id} 
@@ -670,6 +836,7 @@ export default function LocationsPage() {
                   onEdit={handleEdit}
                   onShare={handleShare}
                   onImageClick={openGallery}
+                  onCopyAddress={handleCopyAddress}
                 />
               ))}
             </div>
@@ -701,16 +868,19 @@ function LocationCard({
   location, 
   onEdit, 
   onShare,
-  onImageClick 
+  onImageClick,
+  onCopyAddress
 }: { 
   location: Location
   onEdit: (location: Location) => void
   onShare: (location: Location) => void
   onImageClick: (images: string[], index: number) => void
+  onCopyAddress: (location: Location) => void
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const images = getLocationImages(location)
   const imageCount = images.length
+  const hasAddress = Boolean(getFullAddress(location))
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -723,15 +893,14 @@ function LocationCard({
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      {/* 图片区域 */}
+    <Card id={`location-card-${location.id}`} className="overflow-hidden hover:shadow-lg transition-all border-green-100">
       <div 
         className="aspect-video bg-gray-100 relative group cursor-pointer"
         onClick={() => {
           if (imageCount > 0) {
             onImageClick(images, currentImageIndex)
           } else {
-            onEdit(location) // 无图时点击编辑
+            onEdit(location)
           }
         }}
       >
@@ -742,12 +911,10 @@ function LocationCard({
               alt={location.name}
               className="w-full h-full object-cover"
             />
-            {/* 图片计数/放大提示 */}
             <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-90 backdrop-blur-sm">
                {currentImageIndex + 1} / {imageCount}
             </div>
 
-            {/* 轮播控制 */}
             {imageCount > 1 && (
               <>
                 <button
@@ -765,21 +932,12 @@ function LocationCard({
               </>
             )}
             
-            {/* 补充图片提示 */}
             {imageCount < MAX_IMAGES && (
               <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="h-3 w-3" />
                 可补充{MAX_IMAGES - imageCount}张图
               </div>
             )}
-            
-            {/* 点击查看大图提示 */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <div className="bg-black/40 text-white px-3 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-sm">
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="text-sm font-medium">查看大图</span>
-                </div>
-            </div>
           </>
         ) : (
           <div 
@@ -793,46 +951,68 @@ function LocationCard({
       </div>
 
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-green-600" />
-            {location.name}
+        <CardTitle className="text-lg flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-green-600 flex-shrink-0" />
+              <span className="truncate">{location.name}</span>
+            </div>
+            <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+              <Clock3 className="h-3.5 w-3.5" />
+              更新于 {formatDate(location.created_at)}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onEdit(location); }}
-              className="h-8 w-8 p-0"
-              title="编辑此地点"
-            >
-              <Edit2 className="h-4 w-4 text-gray-500 hover:text-green-600" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onShare(location); }}
-              className="h-8 w-8 p-0"
-              title="分享此地点"
-            >
-              <Share2 className="h-4 w-4 text-gray-500 hover:text-green-600" />
-            </Button>
-          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onEdit(location) }}
+            className="h-8 w-8 p-0"
+            title="编辑此地点"
+          >
+            <Edit2 className="h-4 w-4 text-gray-500 hover:text-green-600" />
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         {(location.province || location.city) && (
-          <div className="flex items-center gap-1 text-sm text-gray-500 mb-2">
+          <div className="flex items-center gap-1 text-sm text-gray-600">
             <Building2 className="h-4 w-4" />
             {[location.province, location.city].filter(Boolean).join(" · ")}
           </div>
         )}
         {location.address && (
-          <p className="text-sm text-gray-600 mb-2">{location.address}</p>
+          <p className="text-sm text-gray-700 line-clamp-2">{location.address}</p>
         )}
         {location.description && (
-          <p className="text-sm text-gray-500">{location.description}</p>
+          <p className="text-sm text-gray-500 line-clamp-3 leading-6">{location.description}</p>
         )}
+
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(getMapSearchUrl(location), "_blank", "noopener,noreferrer")}
+            className="justify-start"
+          >
+            <Navigation className="h-4 w-4 mr-1" />
+            去导航
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCopyAddress(location)}
+            className="justify-start"
+            disabled={!hasAddress}
+          >
+            <Copy className="h-4 w-4 mr-1" />
+            复制地址
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onShare(location)} className="justify-start col-span-2">
+            <Share2 className="h-4 w-4 mr-1" />
+            分享这个地点
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
