@@ -35,7 +35,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { DonationSection } from "@/components/donation-section"
 import {
@@ -55,8 +54,13 @@ const MAX_IMAGES = 4
 const HOT_CITIES_LIMIT = 6
 const TOP_PROVINCES_LIMIT = 8
 const ANALYTICS_MONTHS = 6
-const PRIMARY_SITE_URL = "https://jwcommunity.space"
+const PRIMARY_SITE_URL = "https://pullupindex.top"
+const COACHLINK_LOCATIONS_URL = "https://coachlink.fit/streetlifting-index/locations"
 type SortBy = "newest" | "oldest" | "name"
+type SubmissionSuccess = {
+  locationName: string
+  isEdit: boolean
+}
 
 const provinceChartConfig = {
   count: {
@@ -258,10 +262,42 @@ export default function LocationsPage() {
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [galleryInitialIndex, setGalleryInitialIndex] = useState(0)
+  const [submissionSuccess, setSubmissionSuccess] = useState<SubmissionSuccess | null>(null)
+  const [successVisible, setSuccessVisible] = useState(false)
 
   useEffect(() => {
     fetchLocations()
+
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("thanksDemo") === "1") {
+      setSubmissionSuccess({
+        locationName: params.get("demoName") || "南京奥体单杠区",
+        isEdit: false,
+      })
+    }
   }, [])
+
+  useEffect(() => {
+    if (!submissionSuccess) return
+
+    setSuccessVisible(false)
+    const frame = window.requestAnimationFrame(() => {
+      setSuccessVisible(true)
+    })
+    const hideTimer = window.setTimeout(() => {
+      setSuccessVisible(false)
+    }, 3400)
+    const removeTimer = window.setTimeout(() => {
+      setSubmissionSuccess(null)
+    }, 4000)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(hideTimer)
+      window.clearTimeout(removeTimer)
+    }
+  }, [submissionSuccess])
 
   const provinceOptions = useMemo(() => {
     return Array.from(new Set(locations.map((loc) => loc.province).filter(Boolean))).sort()
@@ -474,6 +510,7 @@ export default function LocationsPage() {
     setSubmitting(true)
     try {
       if (editingLocation) {
+        const submittedLocationName = formData.name.trim()
         // 更新现有记录
         const { error } = await db
           .from(TABLE_NAME)
@@ -493,9 +530,14 @@ export default function LocationsPage() {
         } else {
           setDialogOpen(false)
           resetForm()
+          setSubmissionSuccess({
+            locationName: submittedLocationName,
+            isEdit: true,
+          })
           fetchLocations()
         }
       } else {
+        const submittedLocationName = formData.name.trim()
         // 新增记录
         const { error } = await db.from(TABLE_NAME).insert([
           {
@@ -514,6 +556,10 @@ export default function LocationsPage() {
         } else {
           setDialogOpen(false)
           resetForm()
+          setSubmissionSuccess({
+            locationName: submittedLocationName,
+            isEdit: false,
+          })
           fetchLocations()
         }
       }
@@ -673,26 +719,83 @@ export default function LocationsPage() {
             )}
           </section>
 
+          {submissionSuccess && (
+            <Card
+              role="status"
+              aria-live="polite"
+              className={`border-emerald-200 bg-emerald-50/90 shadow-sm transition-all duration-500 ${
+                successVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
+              }`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-full bg-white/90 p-2 border border-emerald-200">
+                    <Sparkles className="h-4 w-4 text-emerald-600 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm md:text-base font-semibold text-emerald-900">
+                      {submissionSuccess.isEdit ? "感谢你完善社区点位信息" : "感谢分享，已收到你的点位投稿"}
+                    </p>
+                    <p className="text-sm text-emerald-800 leading-relaxed">
+                      {submissionSuccess.locationName
+                        ? `「${submissionSuccess.locationName}」已加入社区地图。你的贡献可能会帮助更多训练者更快找到合适的训练地点。`
+                        : "你的贡献可能会帮助更多训练者更快找到合适的训练地点。"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 rounded-full bg-emerald-100 overflow-hidden">
+                  <div
+                    className={`h-full bg-emerald-500 transition-all duration-[3400ms] ease-linear ${
+                      successVisible ? "w-0" : "w-full"
+                    }`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="mb-6 border-blue-300 bg-blue-50 shadow-sm">
             <CardContent className="p-4 text-sm md:text-base text-blue-900 leading-relaxed">
               <p className="font-semibold">📢 功能迁移通知（重要）</p>
               <p className="mt-1">
-                「寻找单杠」功能已迁移至 Coach Link（官网：
+                旧版「寻找单杠」页面目前仅保留浏览功能。上传新点位、补充图片、编辑信息和参与贡献榜，
+                请前往 Coach Link 的「寻找单杠」模块（入口：
                 <a
-                  href="https://coachlink.fit"
+                  href={COACHLINK_LOCATIONS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline font-medium"
                 >
-                  coachlink.fit
+                  coachlink.fit/streetlifting-index/locations
                 </a>
-                ，小程序：启能教链）。
+                ）。
               </p>
               <p className="mt-1">
-                为避免后续数据不同步，建议大家从现在开始在 Coach Link / 启能教链继续使用该功能。
+                该功能现已接入登录态与贡献统计体系，后续投稿、补图和贡献榜统计都将在 Coach Link 中完成。
               </p>
-              <p className="mt-1 font-medium">
-                温馨提示：启能教链小程序目前仍在开发完善中。
+              <p className="mt-1">
+                如果你想继续为社区贡献点位，请登录后在新页面操作，避免旧页面提交失败或数据不同步。
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <a
+                  href={COACHLINK_LOCATIONS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                >
+                  前往 Coach Link 上传/编辑
+                </a>
+                <a
+                  href="https://coachlink.fit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                >
+                  打开 Coach Link 官网
+                </a>
+              </div>
+              <p className="mt-3 text-xs text-blue-800/80">
+                温馨提示：启能教链小程序目前仍在开发完善中，网页版入口以 Coach Link 官网为准。
               </p>
             </CardContent>
           </Card>
@@ -877,12 +980,15 @@ export default function LocationsPage() {
               setDialogOpen(open)
               if (!open) resetForm()
             }}>
-              <DialogTrigger asChild>
-                <Button className="bg-green-600 hover:bg-green-700">
-                  <Plus className="mr-2 h-4 w-4" />
-                  分享单杠位置
-                </Button>
-              </DialogTrigger>
+              <a
+                href={COACHLINK_LOCATIONS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                前往 Coach Link 上传
+              </a>
               <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingLocation ? "编辑单杠位置" : "分享单杠位置"}</DialogTitle>
@@ -1045,7 +1151,7 @@ export default function LocationsPage() {
                 {locations.length === 0 ? (
                   <>
                     <p className="text-gray-500">暂无单杠位置信息</p>
-                    <p className="text-gray-400 text-sm mt-1">成为第一个分享者吧！</p>
+                    <p className="text-gray-400 text-sm mt-1">想成为第一个分享者，请前往 Coach Link 登录后投稿。</p>
                   </>
                 ) : (
                   <>
@@ -1196,9 +1302,12 @@ function LocationCard({
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); onEdit(location) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              window.open(COACHLINK_LOCATIONS_URL, "_blank", "noopener,noreferrer")
+            }}
             className="h-8 w-8 p-0"
-            title="编辑此地点"
+            title="前往 Coach Link 完善此地点"
           >
             <Edit2 className="h-4 w-4 text-gray-500 hover:text-green-600" />
           </Button>
