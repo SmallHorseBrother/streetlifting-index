@@ -759,7 +759,7 @@ export default function LocationsPage() {
               <p className="font-semibold">📢 功能迁移通知（重要）</p>
               <p className="mt-1">
                 旧版「寻找单杠」页面目前仅保留浏览功能。上传新点位、补充图片、编辑信息和参与贡献榜，
-                请前往 Coach Link 的「寻找单杠」模块（入口：
+                请前往 Coach Link 的「寻找单杠」模块，或使用「启能教链」小程序继续参与（网页入口：
                 <a
                   href={COACHLINK_LOCATIONS_URL}
                   target="_blank"
@@ -795,7 +795,7 @@ export default function LocationsPage() {
                 </a>
               </div>
               <p className="mt-3 text-xs text-blue-800/80">
-                温馨提示：启能教链小程序目前仍在开发完善中，网页版入口以 Coach Link 官网为准。
+                温馨提示：除了 Coach Link 官网，你也可以在「启能教链」小程序中继续使用该功能；若遇到能力差异，优先以网页版入口为准。
               </p>
             </CardContent>
           </Card>
