@@ -41,19 +41,19 @@ export function MigrationBanner() {
               </strong>。
             </p>
             <p className="text-sm sm:text-base text-white/95 mt-1 leading-relaxed">
-              请大家尽快前往{" "}
-              <strong className="text-yellow-200">「教链」小程序 — 工具箱</strong>
-              {" "}或{" "}
+              <strong className="text-yellow-200">「教链」小程序和 coachlink.fit 中的体验更流畅、功能更完善</strong>
+              ，推荐优先前往使用。
+            </p>
+            <p className="text-sm sm:text-base text-white/95 mt-1 leading-relaxed">
               <a
-                href="https://coachlink.fit"
+                href="https://coachlink.fit/streetlifting-index"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline font-bold text-yellow-200 hover:text-white inline-flex items-center gap-1 transition-colors"
               >
-                coachlink.fit
+                立即访问 coachlink.fit →
                 <ExternalLink className="h-3.5 w-3.5 inline" />
               </a>
-              {" "}继续使用，感谢理解与支持！
             </p>
           </div>
           <button
